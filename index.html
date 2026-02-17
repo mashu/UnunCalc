@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Kalkulator strat transformatora UnUn z pomiaru S21 na NanoVNA z dzielnikiem L-pad">
+<meta name="description" content="Calculate UnUn transformer insertion loss from NanoVNA S21 measurement with L-pad resistive divider">
 <meta name="author" content="SA0KAM">
-<meta property="og:title" content="Kalkulator strat UnUn — NanoVNA + L-pad">
-<meta property="og:description" content="Oblicz straty transformatora impedancyjnego UnUn na podstawie pomiaru S21 z NanoVNA i dzielnika rezystancyjnego L-pad.">
+<meta property="og:title" content="UnUn Loss Calculator — NanoVNA + L-pad">
+<meta property="og:description" content="Calculate UnUn transformer insertion loss from NanoVNA S21 measurement with L-pad resistive divider.">
 <meta property="og:url" content="https://mashu.github.io/UnunCalc/">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://mashu.github.io/UnunCalc/">
-<title>Kalkulator strat UnUn — NanoVNA + L-pad</title>
+<title>UnUn Loss Calculator — NanoVNA + L-pad</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
@@ -41,13 +41,13 @@
     padding: 1.5rem;
   }
 
-  .container {
-    max-width: 720px;
-    margin: 0 auto;
-  }
+  .container { max-width: 720px; margin: 0 auto; }
 
   header {
     margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
   }
 
   h1 {
@@ -63,6 +63,41 @@
     color: var(--text-dim);
     font-size: 0.88rem;
     margin-top: 0.3rem;
+  }
+
+  /* ── LANG TOGGLE ── */
+  .lang-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.3rem;
+    flex-shrink: 0;
+    margin-top: 0.2rem;
+  }
+
+  .lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.3rem 0.6rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .lang-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .lang-btn:hover:not(.active) {
+    color: var(--text);
   }
 
   /* ── DIAGRAM ── */
@@ -82,7 +117,7 @@
     margin-bottom: 1rem;
   }
 
-  /* ── INPUTS ── */
+  /* ── CARDS ── */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -120,9 +155,7 @@
     gap: 0.35rem;
   }
 
-  .input-group.full {
-    grid-column: 1 / -1;
-  }
+  .input-group.full { grid-column: 1 / -1; }
 
   .input-group label {
     font-size: 0.82rem;
@@ -140,9 +173,7 @@
     transition: border-color 0.2s;
   }
 
-  .input-row:focus-within {
-    border-color: var(--accent);
-  }
+  .input-row:focus-within { border-color: var(--accent); }
 
   .input-row input {
     flex: 1;
@@ -174,6 +205,99 @@
     white-space: nowrap;
   }
 
+  /* ── GAUGE ── */
+  .gauge-container { padding: 1.5rem 0 1rem; }
+
+  .gauge-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+  }
+
+  .gauge-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+
+  .gauge-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+    transition: color 0.5s ease;
+  }
+
+  .gauge-value .unit-sm {
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: var(--text-dim);
+  }
+
+  .gauge-track {
+    position: relative;
+    height: 14px;
+    border-radius: 7px;
+    background: var(--surface3);
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .gauge-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    border-radius: 7px;
+    transition: width 0.6s cubic-bezier(0.34, 1.4, 0.64, 1),
+                background-color 0.5s ease;
+    min-width: 4px;
+  }
+
+  .gauge-glow {
+    position: absolute;
+    right: -2px; top: -3px; bottom: -3px;
+    width: 8px;
+    border-radius: 50%;
+    filter: blur(4px);
+    transition: background-color 0.5s ease;
+    pointer-events: none;
+  }
+
+  .gauge-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.35rem;
+    padding: 0 2px;
+  }
+
+  .gauge-ticks span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+  }
+
+  .gauge-zones {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+    flex-wrap: wrap;
+  }
+
+  .zone-tag {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: opacity 0.4s, transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+
+  .zone-tag.active { transform: scale(1.1); opacity: 1; }
+  .zone-tag.inactive { opacity: 0.25; transform: scale(1); }
+
+  .zt-excellent { background: #122b12; color: var(--green); border: 1px solid #1a3d1a; }
+  .zt-good { background: #2a2a10; color: var(--yellow); border: 1px solid #3d3d1a; }
+  .zt-poor { background: #2a1515; color: var(--red); border: 1px solid #3d1a1a; }
+
   /* ── RESULTS ── */
   .results {
     background: var(--surface);
@@ -203,62 +327,11 @@
     font-size: 1.05rem;
     font-weight: 700;
     color: #fff;
+    transition: color 0.3s;
   }
 
   .result-value.accent { color: var(--accent); }
-  .result-value.red { color: var(--red); }
-  .result-value.yellow { color: var(--yellow); }
-  .result-value.green { color: var(--green); }
   .result-value.blue { color: var(--blue); }
-
-  .big-result {
-    text-align: center;
-    padding: 1.2rem 0 0.6rem;
-  }
-
-  .big-result .label {
-    font-size: 0.82rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.3rem;
-  }
-
-  .big-result .value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 2.2rem;
-    font-weight: 700;
-  }
-
-  .big-result .unit-label {
-    font-size: 1rem;
-    color: var(--text-dim);
-    font-weight: 400;
-  }
-
-  .quality-badge {
-    display: inline-block;
-    padding: 0.2rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    margin-top: 0.5rem;
-  }
-
-  .q-excellent { background: #1a3a1a; color: var(--green); border: 1px solid #2a5a2a; }
-  .q-good { background: #2a3a1a; color: var(--yellow); border: 1px solid #4a5a2a; }
-  .q-poor { background: #3a1a1a; color: var(--red); border: 1px solid #5a2a2a; }
-
-  .note {
-    background: #1a2030;
-    border-left: 3px solid var(--blue);
-    padding: 0.75rem 1rem;
-    margin-top: 1rem;
-    border-radius: 0 8px 8px 0;
-    font-size: 0.82rem;
-    color: var(--text-dim);
-    line-height: 1.5;
-  }
 
   .formula-display {
     background: var(--surface2);
@@ -276,8 +349,88 @@
   .formula-display .hl2 { color: var(--red); font-weight: 600; }
   .formula-display .hl3 { color: var(--yellow); font-weight: 600; }
 
+  /* ── INFO SECTIONS ── */
+  .info-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .info-section summary {
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--accent);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    user-select: none;
+  }
+
+  .info-section summary::-webkit-details-marker { display: none; }
+
+  .info-section summary::before {
+    content: '▸';
+    font-size: 0.8rem;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+
+  .info-section[open] summary::before { transform: rotate(90deg); }
+
+  .info-content {
+    margin-top: 1rem;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    line-height: 1.65;
+  }
+
+  .info-content p { margin-bottom: 0.7rem; }
+  .info-content strong { color: var(--text); font-weight: 600; }
+
+  .info-content code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--surface3);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  .note {
+    background: #1a2030;
+    border-left: 3px solid var(--blue);
+    padding: 0.75rem 1rem;
+    margin-top: 0.8rem;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .note.warn {
+    border-left-color: var(--yellow);
+    background: #1f1d14;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding: 1rem;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
   @media (max-width: 500px) {
     .input-grid { grid-template-columns: 1fr; }
+    body { padding: 1rem; }
+    header { flex-direction: column; gap: 0.8rem; }
   }
 </style>
 </head>
@@ -286,85 +439,71 @@
 <div class="container">
 
   <header>
-    <h1>Kalkulator strat <span>UnUn</span></h1>
-    <p class="subtitle">Pomiar S21 z dzielnikiem L-pad na NanoVNA</p>
+    <div>
+      <h1 data-i18n="title">UnUn Loss <span>Calculator</span></h1>
+      <p class="subtitle" data-i18n="subtitle">S21 measurement with L-pad divider on NanoVNA</p>
+    </div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="btn-pl" onclick="setLang('pl')">PL</button>
+    </div>
   </header>
 
   <!-- SCHEMAT -->
   <div class="diagram-section">
-    <h2>Schemat połączenia</h2>
+    <h2 data-i18n="diagram_title">Connection diagram</h2>
     <svg viewBox="0 0 680 180" width="100%" style="display:block;">
       <defs>
         <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
           <polygon points="0 0, 8 3, 0 6" fill="#ffe66d"/>
         </marker>
       </defs>
-
-      <!-- VNA P1 -->
       <rect x="5" y="45" width="90" height="70" rx="6" fill="#1e3a5f" stroke="#5b9bd5" stroke-width="1.5"/>
-      <text x="50" y="72" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono" font-size="11" font-weight="700">VNA P1</text>
-      <text x="50" y="90" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono" font-size="9" opacity="0.7">50 Ω</text>
-
+      <text x="50" y="72" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">VNA P1</text>
+      <text x="50" y="90" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="9" opacity="0.7">50 Ω</text>
       <line x1="95" y1="75" x2="160" y2="75" stroke="#5b9bd5" stroke-width="2"/>
-
-      <!-- UnUn -->
       <rect x="160" y="40" width="110" height="80" rx="6" fill="#3a1e1e" stroke="#ff6b6b" stroke-width="1.5"/>
-      <text x="215" y="68" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono" font-size="11" font-weight="700">UnUn</text>
-      <text x="215" y="85" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono" font-size="9" opacity="0.7">1:k</text>
-      <text x="215" y="108" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono" font-size="8" opacity="0.5">← mierzymy</text>
-
+      <text x="215" y="68" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">UnUn</text>
+      <text x="215" y="85" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono, monospace" font-size="9" opacity="0.7">1 : k</text>
+      <text x="215" y="108" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono, monospace" font-size="8" opacity="0.5" data-i18n-svg="svg_dut">← DUT</text>
       <line x1="270" y1="75" x2="320" y2="75" stroke="#ff6b6b" stroke-width="2"/>
-
-      <!-- R1 series -->
       <rect x="320" y="62" width="80" height="26" rx="4" fill="none" stroke="#4ecdc4" stroke-width="1.5"/>
-      <text x="360" y="80" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono" font-size="10" font-weight="600">R₁</text>
-      <text x="360" y="55" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono" font-size="8">szereg.</text>
-
+      <text x="360" y="80" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600">R₁</text>
+      <text x="360" y="55" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="8" data-i18n-svg="svg_series">series</text>
       <line x1="400" y1="75" x2="460" y2="75" stroke="#4ecdc4" stroke-width="2"/>
-
-      <!-- Junction -->
       <circle cx="460" cy="75" r="3" fill="#4ecdc4"/>
-
-      <!-- R2 shunt -->
       <line x1="460" y1="78" x2="460" y2="98" stroke="#4ecdc4" stroke-width="1.5"/>
       <rect x="448" y="98" width="24" height="42" rx="4" fill="none" stroke="#4ecdc4" stroke-width="1.5"/>
-      <text x="460" y="123" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono" font-size="9" font-weight="600">R₂</text>
+      <text x="460" y="123" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">R₂</text>
       <line x1="460" y1="140" x2="460" y2="160" stroke="#6b8e5a" stroke-width="1.5" stroke-dasharray="4,2"/>
-      <text x="485" y="125" text-anchor="start" fill="#4ecdc4" font-family="JetBrains Mono" font-size="8">bocznik</text>
-
-      <!-- Wire to P2 -->
+      <text x="485" y="125" text-anchor="start" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="8" data-i18n-svg="svg_shunt">shunt</text>
       <line x1="460" y1="75" x2="575" y2="75" stroke="#5b9bd5" stroke-width="2"/>
-
-      <!-- VNA P2 -->
       <rect x="575" y="45" width="90" height="70" rx="6" fill="#1e3a5f" stroke="#5b9bd5" stroke-width="1.5"/>
-      <text x="620" y="72" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono" font-size="11" font-weight="700">VNA P2</text>
-      <text x="620" y="90" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono" font-size="9" opacity="0.7">50 Ω</text>
-
-      <!-- GND -->
+      <text x="620" y="72" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">VNA P2</text>
+      <text x="620" y="90" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="9" opacity="0.7">50 Ω</text>
       <line x1="50" y1="115" x2="50" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
+      <line x1="215" y1="120" x2="215" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
       <line x1="30" y1="160" x2="650" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
       <line x1="620" y1="115" x2="620" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
-      <text x="340" y="175" text-anchor="middle" fill="#6b8e5a" font-family="JetBrains Mono" font-size="9">GND</text>
-
-      <!-- Arrow -->
+      <text x="340" y="175" text-anchor="middle" fill="#6b8e5a" font-family="JetBrains Mono, monospace" font-size="9">GND</text>
       <line x1="130" y1="30" x2="530" y2="30" stroke="#ffe66d" stroke-width="1" marker-end="url(#arr)" opacity="0.5"/>
-      <text x="330" y="25" text-anchor="middle" fill="#ffe66d" font-family="JetBrains Mono" font-size="8" opacity="0.6">sygnał S21</text>
+      <text x="330" y="25" text-anchor="middle" fill="#ffe66d" font-family="JetBrains Mono, monospace" font-size="8" opacity="0.6" data-i18n-svg="svg_signal">S21 signal →</text>
     </svg>
   </div>
 
-  <!-- PARAMETRY DZIELNIKA -->
+  <!-- L-PAD -->
   <div class="card">
-    <div class="card-title"><span class="dot" style="background:var(--accent)"></span> Parametry dzielnika L-pad</div>
+    <div class="card-title"><span class="dot" style="background:var(--accent)"></span> <span data-i18n="lpad_title">L-pad divider parameters</span></div>
     <div class="input-grid">
       <div class="input-group">
-        <label>R₁ (szeregowy)</label>
+        <label data-i18n="r1_label">R₁ (series)</label>
         <div class="input-row">
           <input type="number" id="r1" value="1206.9" step="0.1" oninput="calculate()">
           <span class="unit">Ω</span>
         </div>
       </div>
       <div class="input-group">
-        <label>R₂ (bocznikowy)</label>
+        <label data-i18n="r2_label">R₂ (shunt)</label>
         <div class="input-row">
           <input type="number" id="r2" value="50.034" step="0.001" oninput="calculate()">
           <span class="unit">Ω</span>
@@ -373,19 +512,19 @@
     </div>
   </div>
 
-  <!-- PARAMETRY UNUN -->
+  <!-- UNUN -->
   <div class="card">
-    <div class="card-title"><span class="dot" style="background:var(--red)"></span> Parametry UnUn</div>
+    <div class="card-title"><span class="dot" style="background:var(--red)"></span> <span data-i18n="unun_title">UnUn parameters</span></div>
     <div class="input-grid">
       <div class="input-group">
-        <label>Przełożenie impedancyjne (k)</label>
+        <label data-i18n="ratio_label">Impedance ratio (k)</label>
         <div class="input-row">
           <input type="number" id="ratio" value="25" step="1" oninput="calculate()">
           <span class="unit">: 1</span>
         </div>
       </div>
       <div class="input-group">
-        <label>Z₀ (impedancja VNA)</label>
+        <label data-i18n="z0_label">Z₀ (VNA impedance)</label>
         <div class="input-row">
           <input type="number" id="z0" value="50" step="1" oninput="calculate()">
           <span class="unit">Ω</span>
@@ -394,66 +533,290 @@
     </div>
   </div>
 
-  <!-- ODCZYT Z VNA -->
+  <!-- VNA READING -->
   <div class="card">
-    <div class="card-title"><span class="dot" style="background:var(--yellow)"></span> Odczyt z NanoVNA</div>
+    <div class="card-title"><span class="dot" style="background:var(--yellow)"></span> <span data-i18n="vna_title">NanoVNA reading — S21 LogMag from marker</span></div>
     <div class="input-grid">
-      <div class="input-group full">
-        <label>Zmierzony S21 (LogMag) — odczytaj z markera</label>
+      <div class="input-group">
+        <label data-i18n="s21_label">Measured S21</label>
         <div class="input-row">
-          <input type="number" id="s21measured" value="-21.5" step="0.1" oninput="calculate()">
+          <input type="number" id="s21measured" value="-20.5" step="0.1" oninput="calculate()">
           <span class="unit">dB</span>
         </div>
       </div>
+      <div class="input-group">
+        <label data-i18n="freq_label">Frequency (informational)</label>
+        <div class="input-row">
+          <input type="number" id="freq" value="7.1" step="0.1" placeholder="e.g. 7.1">
+          <span class="unit">MHz</span>
+        </div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:0.8rem" data-i18n-html="vna_note">
+      💡 Measure S21 separately at each band frequency. UnUn losses increase with frequency — check at 3.5, 7, 14, 21 and 28 MHz.
     </div>
   </div>
 
-  <!-- WYNIKI -->
-  <div class="results" id="results">
-    <div class="card-title"><span class="dot" style="background:var(--green)"></span> Wyniki</div>
+  <!-- ═══ RESULTS + GAUGE ═══ -->
+  <div class="results">
+    <div class="card-title"><span class="dot" style="background:var(--green)"></span> <span data-i18n="results_title">Results</span></div>
+
+    <div class="gauge-container">
+      <div class="gauge-label-row">
+        <span class="gauge-title" data-i18n="gauge_title">UnUn transformer loss</span>
+        <span class="gauge-value" id="gauge-val">— <span class="unit-sm">dB</span></span>
+      </div>
+      <div class="gauge-track">
+        <div class="gauge-fill" id="gauge-fill" style="width:0%; background:var(--green);">
+          <div class="gauge-glow" id="gauge-glow"></div>
+        </div>
+      </div>
+      <div class="gauge-ticks">
+        <span>0</span><span>0.25</span><span>0.5</span><span>1.0</span><span>1.5</span><span>2.0</span><span>3.0+ dB</span>
+      </div>
+      <div class="gauge-zones">
+        <span class="zone-tag zt-excellent inactive" id="zt-exc" data-i18n="zone_exc">◉ Excellent &lt; 0.5 dB</span>
+        <span class="zone-tag zt-good inactive" id="zt-good" data-i18n="zone_good">◉ OK 0.5–1.0 dB</span>
+        <span class="zone-tag zt-poor inactive" id="zt-poor" data-i18n="zone_poor">◉ Poor &gt; 1.0 dB</span>
+      </div>
+    </div>
 
     <div class="result-row">
-      <span class="result-label">Z wyjścia UnUn (k × Z₀)</span>
-      <span class="result-value blue" id="out-zunun">1250.0 Ω</span>
+      <span class="result-label" data-i18n="res_zunun">UnUn output Z (k × Z₀)</span>
+      <span class="result-value blue" id="out-zunun">—</span>
     </div>
     <div class="result-row">
-      <span class="result-label">Z wejścia dzielnika</span>
-      <span class="result-value accent" id="out-zin">1231.9 Ω</span>
+      <span class="result-label" data-i18n="res_zin">Divider input Z (R₁ + R₂‖Z₀)</span>
+      <span class="result-value accent" id="out-zin">—</span>
     </div>
     <div class="result-row">
-      <span class="result-label">Z odbite na pierwotną (dopasowanie P1)</span>
-      <span class="result-value" id="out-zreflected">49.3 Ω</span>
+      <span class="result-label" data-i18n="res_zref">Reflected Z to primary side</span>
+      <span class="result-value" id="out-zreflected">—</span>
     </div>
     <div class="result-row">
-      <span class="result-label">Tłumienie dzielnika (teoretyczne)</span>
-      <span class="result-value yellow" id="out-divloss">−19.9 dB</span>
+      <span class="result-label" data-i18n="res_divloss">Divider attenuation (theoretical)</span>
+      <span class="result-value" id="out-divloss" style="color:var(--yellow)">—</span>
     </div>
     <div class="result-row">
-      <span class="result-label">Zmierzony S21 (cały tor)</span>
-      <span class="result-value" id="out-s21meas">−21.5 dB</span>
-    </div>
-
-    <div class="big-result">
-      <div class="label">Straty transformatora UnUn</div>
-      <div class="value" id="out-loss" style="color:var(--red)">1.6 <span class="unit-label">dB</span></div>
-      <div><span class="quality-badge" id="out-badge">—</span></div>
+      <span class="result-label" data-i18n="res_s21">Measured S21 (full path)</span>
+      <span class="result-value" id="out-s21meas">—</span>
     </div>
 
     <div class="formula-display">
-      <span class="hl3">S21_dzielnika</span> = 10·log₁₀(4·Zs·R₂‖²  / ((Zs+R₁+R₂‖)²·Z₀))<br>
-      <span class="hl2">Straty UnUn</span> = <span class="hl3">S21_dzielnika</span> − S21_zmierzone
-    </div>
-
-    <div class="note">
-      💡 Dobry UnUn na pasmach KF powinien mieć straty &lt; 0.5 dB.
-      Straty 0.5–1 dB to akceptowalny wynik. Powyżej 1.5 dB — sprawdź materiał rdzenia,
-      liczbę zwojów i jakość wykonania.
+      <span class="hl">R₂‖Z₀</span> = R₂·Z₀ / (R₂+Z₀)<br>
+      <span class="hl3">S21_div</span> = 10·log₁₀( 4·Z_s·(R₂‖Z₀)² / ((Z_s+R₁+R₂‖Z₀)²·Z₀) )<br>
+      <span class="hl2" data-i18n="formula_loss">UnUn Loss</span> = <span class="hl3">S21_div</span> − S21_measured
     </div>
   </div>
+
+  <!-- ═══ INFO: FREQUENCY ═══ -->
+  <details class="info-section" open>
+    <summary>📡 <span data-i18n="info_freq_title">Does frequency matter?</span></summary>
+    <div class="info-content" data-i18n-html="info_freq_body">
+      <p><strong>Yes, significantly.</strong> UnUn losses change with frequency — they typically increase toward higher bands. A single measurement is not enough. You should measure S21 at multiple frequencies (using markers) and compare losses separately for each band.</p>
+      <p><strong>Typical behavior:</strong> at 3.5 MHz losses may be 0.2 dB, at 14 MHz — 0.5 dB, and at 28 MHz — 1+ dB. This depends on core material (mix 43, 31, 61 etc.), number of turns, and construction.</p>
+      <p><strong>The resistive divider</strong> itself is broadband and essentially frequency-independent — provided you use <strong>non-inductive</strong> resistors (metal film, SMD, or composition).</p>
+      <div class="note warn">
+        ⚠ <strong>Do not use wire-wound resistors!</strong> Their parasitic inductance will corrupt measurements above ~10 MHz. Metal film or SMD resistors are fine.
+      </div>
+    </div>
+  </details>
+
+  <!-- ═══ INFO: CALIBRATION ═══ -->
+  <details class="info-section">
+    <summary>🔧 <span data-i18n="info_cal_title">How to calibrate the NanoVNA?</span></summary>
+    <div class="info-content" data-i18n-html="info_cal_body">
+      <p><strong>Full 2-port calibration (SOLT + THRU)</strong> — essential for accurate S21:</p>
+      <p><strong>1.</strong> Set frequency range: <code>STIMULUS → START 1 MHz</code>, <code>STOP 30 MHz</code></p>
+      <p><strong>2.</strong> Connect cables to both ports — the same cables you'll use for the measurement</p>
+      <p><strong>3.</strong> Calibrate at cable ends:</p>
+      <p>• Port CH0: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>
+      • Port CH1: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>
+      • Both ports: <code>THRU</code> (connect P1 to P2)</p>
+      <p><strong>4.</strong> Save: <code>CAL → SAVE → SAVE 0</code></p>
+      <p><strong>5. Verify:</strong> connect THRU and check that S21 reads ~0 dB. ±0.1 dB is OK.</p>
+      <div class="note">
+        💡 Calibration is valid for a specific set of cables and frequency range. Change cables — recalibrate.
+      </div>
+      <div class="note warn" style="margin-top:0.5rem">
+        ⚠ Calibrate <strong>without</strong> the UnUn and divider. Calibration establishes the reference plane at the cable ends.
+      </div>
+    </div>
+  </details>
+
+  <!-- ═══ INFO: PROCEDURE ═══ -->
+  <details class="info-section">
+    <summary>📋 <span data-i18n="info_proc_title">Step-by-step procedure</span></summary>
+    <div class="info-content" data-i18n-html="info_proc_body">
+      <p><strong>1.</strong> Calibrate NanoVNA (2-port, 1–30 MHz)</p>
+      <p><strong>2.</strong> Enable: <code>DISPLAY → TRACE → CH1</code> → <code>FORMAT → LOGMAG</code></p>
+      <p><strong>3.</strong> Connect: P1 → UnUn (50 Ω input) → UnUn output → R₁ series → junction → P2, with R₂ from junction to GND</p>
+      <p><strong>4.</strong> Set markers: <code>MARKER → SELECT</code> at 3.5, 7, 14, 21, 28 MHz</p>
+      <p><strong>5.</strong> Read S21 [dB] from each marker → enter in this calculator</p>
+      <p><strong>6.</strong> Calculator subtracts divider attenuation = pure UnUn loss</p>
+      <div class="note">
+        💡 <strong>Divider verification:</strong> connect the divider alone (no UnUn) P1 → R₁ → R₂ → P2. S21 should match the "Divider attenuation" value from the calculator (±0.2 dB).
+      </div>
+    </div>
+  </details>
+
+  <footer>
+    SA0KAM · <a href="https://github.com/mashu/UnunCalc">GitHub</a>
+  </footer>
 
 </div>
 
 <script>
+// ═══════════════════════════════════════
+// i18n
+// ═══════════════════════════════════════
+const i18n = {
+  en: {
+    title: 'UnUn Loss <span>Calculator</span>',
+    subtitle: 'S21 measurement with L-pad divider on NanoVNA',
+    diagram_title: 'Connection diagram',
+    lpad_title: 'L-pad divider parameters',
+    r1_label: 'R₁ (series)',
+    r2_label: 'R₂ (shunt)',
+    unun_title: 'UnUn parameters',
+    ratio_label: 'Impedance ratio (k)',
+    z0_label: 'Z₀ (VNA impedance)',
+    vna_title: 'NanoVNA reading — S21 LogMag from marker',
+    s21_label: 'Measured S21',
+    freq_label: 'Frequency (informational)',
+    vna_note: '💡 Measure S21 separately at each band frequency. UnUn losses increase with frequency — check at 3.5, 7, 14, 21 and 28\u00A0MHz.',
+    results_title: 'Results',
+    gauge_title: 'UnUn transformer loss',
+    zone_exc: '◉ Excellent < 0.5 dB',
+    zone_good: '◉ OK 0.5–1.0 dB',
+    zone_poor: '◉ Poor > 1.0 dB',
+    res_zunun: 'UnUn output Z (k × Z₀)',
+    res_zin: 'Divider input Z (R₁ + R₂‖Z₀)',
+    res_zref: 'Reflected Z to primary side',
+    res_divloss: 'Divider attenuation (theoretical)',
+    res_s21: 'Measured S21 (full path)',
+    formula_loss: 'UnUn Loss',
+    gauge_negative: 'dB ⚠ negative',
+    svg_dut: '← DUT',
+    svg_series: 'series',
+    svg_shunt: 'shunt',
+    svg_signal: 'S21 signal →',
+    info_freq_title: 'Does frequency matter?',
+    info_freq_body: '<p><strong>Yes, significantly.</strong> UnUn losses change with frequency — they typically increase toward higher bands. A single measurement is not enough. You should measure S21 at multiple frequencies (using markers) and compare losses separately for each band.</p><p><strong>Typical behavior:</strong> at 3.5 MHz losses may be 0.2 dB, at 14 MHz — 0.5 dB, and at 28 MHz — 1+ dB. This depends on core material (mix 43, 31, 61 etc.), number of turns, and construction.</p><p><strong>The resistive divider</strong> itself is broadband and essentially frequency-independent — provided you use <strong>non-inductive</strong> resistors (metal film, SMD, or composition).</p><div class="note warn">⚠ <strong>Do not use wire-wound resistors!</strong> Their parasitic inductance will corrupt measurements above ~10 MHz. Metal film or SMD resistors are fine.</div>',
+    info_cal_title: 'How to calibrate the NanoVNA?',
+    info_cal_body: '<p><strong>Full 2-port calibration (SOLT + THRU)</strong> — essential for accurate S21:</p><p><strong>1.</strong> Set frequency range: <code>STIMULUS → START 1 MHz</code>, <code>STOP 30 MHz</code></p><p><strong>2.</strong> Connect cables to both ports — the same cables you\'ll use for the measurement</p><p><strong>3.</strong> Calibrate at cable ends:</p><p>• Port CH0: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Port CH1: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Both ports: <code>THRU</code> (connect P1 to P2)</p><p><strong>4.</strong> Save: <code>CAL → SAVE → SAVE 0</code></p><p><strong>5. Verify:</strong> connect THRU and check that S21 reads ~0 dB. ±0.1 dB is OK.</p><div class="note">💡 Calibration is valid for a specific set of cables and frequency range. Change cables — recalibrate.</div><div class="note warn" style="margin-top:0.5rem">⚠ Calibrate <strong>without</strong> the UnUn and divider. Calibration establishes the reference plane at the cable ends.</div>',
+    info_proc_title: 'Step-by-step procedure',
+    info_proc_body: '<p><strong>1.</strong> Calibrate NanoVNA (2-port, 1–30 MHz)</p><p><strong>2.</strong> Enable: <code>DISPLAY → TRACE → CH1</code> → <code>FORMAT → LOGMAG</code></p><p><strong>3.</strong> Connect: P1 → UnUn (50 Ω input) → UnUn output → R₁ series → junction → P2, with R₂ from junction to GND</p><p><strong>4.</strong> Set markers: <code>MARKER → SELECT</code> at 3.5, 7, 14, 21, 28 MHz</p><p><strong>5.</strong> Read S21 [dB] from each marker → enter in this calculator</p><p><strong>6.</strong> Calculator subtracts divider attenuation = pure UnUn loss</p><div class="note">💡 <strong>Divider verification:</strong> connect the divider alone (no UnUn) P1 → R₁ → R₂ → P2. S21 should match the "Divider attenuation" value from the calculator (±0.2 dB).</div>',
+  },
+  pl: {
+    title: 'Kalkulator strat <span>UnUn</span>',
+    subtitle: 'Pomiar S21 z dzielnikiem L-pad na NanoVNA',
+    diagram_title: 'Schemat połączenia',
+    lpad_title: 'Parametry dzielnika L-pad',
+    r1_label: 'R₁ (szeregowy)',
+    r2_label: 'R₂ (bocznikowy)',
+    unun_title: 'Parametry UnUn',
+    ratio_label: 'Przełożenie impedancyjne (k)',
+    z0_label: 'Z₀ (impedancja VNA)',
+    vna_title: 'Odczyt z NanoVNA — S21 LogMag z markera',
+    s21_label: 'S21 zmierzone',
+    freq_label: 'Częstotliwość (informacyjnie)',
+    vna_note: '💡 Zmierz S21 osobno na każdej częstotliwości pasma. Straty UnUn-a rosną z częstotliwością — sprawdź na 3.5, 7, 14, 21 i 28\u00A0MHz.',
+    results_title: 'Wyniki',
+    gauge_title: 'Straty transformatora UnUn',
+    zone_exc: '◉ Doskonały < 0.5 dB',
+    zone_good: '◉ OK 0.5–1.0 dB',
+    zone_poor: '◉ Słaby > 1.0 dB',
+    res_zunun: 'Z wyjścia UnUn (k × Z₀)',
+    res_zin: 'Z wejścia dzielnika (R₁ + R₂‖Z₀)',
+    res_zref: 'Z odbita na stronę pierwotną',
+    res_divloss: 'Tłumienie dzielnika (teoretyczne)',
+    res_s21: 'S21 zmierzone (cały tor)',
+    formula_loss: 'Straty UnUn',
+    gauge_negative: 'dB ⚠ ujemne',
+    svg_dut: '← mierzymy',
+    svg_series: 'szereg.',
+    svg_shunt: 'bocznik',
+    svg_signal: 'sygnał S21 →',
+    info_freq_title: 'Czy częstotliwość ma znaczenie?',
+    info_freq_body: '<p><strong>Tak, i to bardzo.</strong> Straty UnUn-a zmieniają się z częstotliwością — zwykle rosną w górę pasma. Dlatego nie wystarczy jeden pomiar. Powinieneś zmierzyć S21 na kilku częstotliwościach (markerami) i porównać straty osobno dla każdego pasma.</p><p><strong>Typowe zachowanie:</strong> na 3.5 MHz straty mogą być 0.2 dB, na 14 MHz — 0.5 dB, a na 28 MHz — już 1+ dB. Zależy od materiału rdzenia (mix 43, 31, 61 itd.), liczby zwojów i konstrukcji.</p><p><strong>Dzielnik rezystancyjny</strong> jest szerokopasmowy i prawie nie zmienia się z częstotliwością — pod warunkiem, że użyjesz rezystorów <strong>nieindukcyjnych</strong> (metal film, SMD, kompozytowych).</p><div class="note warn">⚠ <strong>Nie używaj rezystorów drutowych!</strong> Ich indukcyjność pasożytnicza zafałszuje pomiar powyżej ~10 MHz. Rezystory metalowarstwowe (metal film) lub SMD są OK.</div>',
+    info_cal_title: 'Jak skalibrować NanoVNA?',
+    info_cal_body: '<p><strong>Kalibracja 2-portowa (SOLT + THRU)</strong> — kluczowa dla wiarygodnego S21:</p><p><strong>1.</strong> Ustaw zakres: <code>STIMULUS → START 1 MHz</code>, <code>STOP 30 MHz</code></p><p><strong>2.</strong> Podłącz kable do obu portów — te same, które użyjesz w pomiarze</p><p><strong>3.</strong> Kalibruj na końcówkach kabli:</p><p>• Port CH0: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Port CH1: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Razem: <code>THRU</code> (połącz P1 z P2)</p><p><strong>4.</strong> <code>CAL → SAVE → SAVE 0</code></p><p><strong>5. Weryfikacja:</strong> podłącz THRU i sprawdź że S21 ≈ 0 dB (±0.1 dB = OK)</p><div class="note">💡 Kalibracja jest ważna dla konkretnych kabli i zakresu częstotliwości. Zmienisz kable — kalibruj od nowa.</div><div class="note warn" style="margin-top:0.5rem">⚠ Kalibruj <strong>bez</strong> UnUn-a i bez dzielnika. Kalibracja ustala punkt odniesienia na końcówkach kabli.</div>',
+    info_proc_title: 'Procedura krok po kroku',
+    info_proc_body: '<p><strong>1.</strong> Skalibruj NanoVNA (2-port, 1–30 MHz)</p><p><strong>2.</strong> Włącz: <code>DISPLAY → TRACE → CH1</code> → <code>FORMAT → LOGMAG</code></p><p><strong>3.</strong> Podłącz: P1 → UnUn (50 Ω) → wyjście UnUn → R₁ szereg. → junction → P2, R₂ od junction do GND</p><p><strong>4.</strong> Markery: <code>MARKER → SELECT</code> na 3.5, 7, 14, 21, 28 MHz</p><p><strong>5.</strong> Odczytaj S21 [dB] z każdego markera → wpisz tu</p><p><strong>6.</strong> Kalkulator odejmie tłumienie dzielnika = czyste straty UnUn-a</p><div class="note">💡 <strong>Weryfikacja dzielnika:</strong> podłącz sam dzielnik (bez UnUn-a) P1 → R₁ → R₂ → P2. S21 powinno zgadzać się z wartością „Tłumienie dzielnika" z kalkulatora (±0.2 dB).</div>',
+  }
+};
+
+let currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-pl').classList.toggle('active', lang === 'pl');
+  document.documentElement.lang = lang;
+
+  // Text nodes
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n[lang][key] !== undefined) {
+      if (el.tagName === 'H1' || key === 'title') {
+        el.innerHTML = i18n[lang][key];
+      } else {
+        el.textContent = i18n[lang][key];
+      }
+    }
+  });
+
+  // HTML content blocks
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.getAttribute('data-i18n-html');
+    if (i18n[lang][key] !== undefined) {
+      el.innerHTML = i18n[lang][key];
+    }
+  });
+
+  // SVG text elements
+  document.querySelectorAll('[data-i18n-svg]').forEach(el => {
+    const key = el.getAttribute('data-i18n-svg');
+    if (i18n[lang][key] !== undefined) {
+      el.textContent = i18n[lang][key];
+    }
+  });
+
+  calculate();
+}
+
+// ═══════════════════════════════════════
+// CALCULATION
+// ═══════════════════════════════════════
+function getGaugeColor(loss) {
+  if (loss < 0) return { css: '#a78bfa', r: 167, g: 139, b: 250 };
+  if (loss <= 0.5) return { css: '#6bcf7f', r: 107, g: 207, b: 127 };
+  if (loss <= 1.0) {
+    const t = (loss - 0.5) / 0.5;
+    return {
+      css: null,
+      r: Math.round(107 + (255 - 107) * t),
+      g: Math.round(207 + (230 - 207) * t),
+      b: Math.round(127 + (109 - 127) * t)
+    };
+  }
+  if (loss <= 2.0) {
+    const t = (loss - 1.0) / 1.0;
+    return {
+      css: null,
+      r: Math.round(255 + (255 - 255) * t),
+      g: Math.round(230 + (107 - 230) * t),
+      b: Math.round(109 + (107 - 109) * t)
+    };
+  }
+  return { css: '#ff6b6b', r: 255, g: 107, b: 107 };
+}
+
+function colorStr(c) {
+  return c.css || `rgb(${c.r},${c.g},${c.b})`;
+}
+
 function calculate() {
   const R1 = parseFloat(document.getElementById('r1').value) || 0;
   const R2 = parseFloat(document.getElementById('r2').value) || 0;
@@ -461,71 +824,26 @@ function calculate() {
   const Z0 = parseFloat(document.getElementById('z0').value) || 50;
   const S21meas = parseFloat(document.getElementById('s21measured').value) || 0;
 
-  // Impedancja wyjściowa UnUn
   const Zunun = k * Z0;
-
-  // R2 równolegle z Z0 (obciążenie portu 2)
   const R2par = (R2 * Z0) / (R2 + Z0);
-
-  // Impedancja wejściowa dzielnika
   const Zin_div = R1 + R2par;
-
-  // Impedancja odbita na stronę pierwotną transformatora
   const Zreflected = Zin_div / k;
-
-  // Zs = impedancja Thevenin po transformatorze (= k * Z0)
   const Zs = Zunun;
-
-  // Ztotal = Zs + R1 + R2par (pełna pętla od źródła Thevenin)
   const Ztotal = Zs + R1 + R2par;
-
-  // Transducer gain |S21|^2 for ideal (lossless) transformer + L-pad
-  // |S21|^2 = P_load / P_avail = 4 * Zs * R2par^2 / (Ztotal^2 * Z0)
   const S21sq = (4 * Zs * R2par * R2par) / (Ztotal * Ztotal * Z0);
-
-  // S21 dzielnika w dB (z idealnym trafo)
   const S21div_dB = 10 * Math.log10(S21sq);
-
-  // Straty UnUn = tłumienie dzielnika (ujemne) minus zmierzone S21 (bardziej ujemne)
-  // Np: -19.9 - (-21.5) = 1.6 dB strat
   const loss = S21div_dB - S21meas;
 
-  // Aktualizacja wyników
+  // Text results
   document.getElementById('out-zunun').textContent = Zunun.toFixed(1) + ' Ω';
   document.getElementById('out-zin').textContent = Zin_div.toFixed(1) + ' Ω';
-  document.getElementById('out-zreflected').textContent = Zreflected.toFixed(1) + ' Ω';
   document.getElementById('out-divloss').textContent = S21div_dB.toFixed(2) + ' dB';
   document.getElementById('out-s21meas').textContent = S21meas.toFixed(1) + ' dB';
 
-  const lossEl = document.getElementById('out-loss');
-  lossEl.innerHTML = Math.abs(loss).toFixed(2) + ' <span class="unit-label">dB</span>';
-
-  const badge = document.getElementById('out-badge');
-  if (loss < 0) {
-    lossEl.style.color = 'var(--purple)';
-    badge.textContent = '⚠ Wynik ujemny — sprawdź połączenia';
-    badge.className = 'quality-badge q-poor';
-  } else if (loss <= 0.5) {
-    lossEl.style.color = 'var(--green)';
-    badge.textContent = '✓ Doskonały';
-    badge.className = 'quality-badge q-excellent';
-  } else if (loss <= 1.0) {
-    lossEl.style.color = 'var(--yellow)';
-    badge.textContent = '○ Akceptowalny';
-    badge.className = 'quality-badge q-good';
-  } else if (loss <= 1.5) {
-    lossEl.style.color = 'var(--red)';
-    badge.textContent = '△ Słaby';
-    badge.className = 'quality-badge q-poor';
-  } else {
-    lossEl.style.color = 'var(--red)';
-    badge.textContent = '✗ Zły — sprawdź rdzeń i wykonanie';
-    badge.className = 'quality-badge q-poor';
-  }
-
-  // Sprawdzenie dopasowania
+  // Reflected Z
   const zrefEl = document.getElementById('out-zreflected');
   const mismatch = Math.abs(Zreflected - Z0) / Z0 * 100;
+  zrefEl.textContent = Zreflected.toFixed(1) + ' Ω';
   if (mismatch < 5) {
     zrefEl.style.color = 'var(--green)';
     zrefEl.textContent += ' ✓';
@@ -534,16 +852,51 @@ function calculate() {
     zrefEl.textContent += ' ~';
   } else {
     zrefEl.style.color = 'var(--red)';
-    zrefEl.textContent += ' ✗ niedopasowanie!';
+    zrefEl.textContent += ' ✗';
   }
+
+  // Gauge
+  const absLoss = Math.max(0, loss);
+  const maxGauge = 3.0;
+  const pct = Math.min(absLoss / maxGauge * 100, 100);
+  const color = getGaugeColor(loss);
+  const colorCSS = colorStr(color);
+
+  const fill = document.getElementById('gauge-fill');
+  const glow = document.getElementById('gauge-glow');
+  fill.style.width = pct + '%';
+  fill.style.backgroundColor = colorCSS;
+  fill.style.boxShadow = `0 0 16px ${colorCSS}44, 0 0 4px ${colorCSS}88`;
+  glow.style.backgroundColor = colorCSS;
+
+  const gaugeVal = document.getElementById('gauge-val');
+  const t = i18n[currentLang];
+  if (loss < 0) {
+    gaugeVal.innerHTML = Math.abs(loss).toFixed(2) + ' <span class="unit-sm">' + t.gauge_negative + '</span>';
+  } else {
+    gaugeVal.innerHTML = loss.toFixed(2) + ' <span class="unit-sm">dB</span>';
+  }
+  gaugeVal.style.color = colorCSS;
+
+  // Zone tags
+  const zones = [
+    { el: document.getElementById('zt-exc'),  active: loss >= 0 && loss <= 0.5 },
+    { el: document.getElementById('zt-good'), active: loss > 0.5 && loss <= 1.0 },
+    { el: document.getElementById('zt-poor'), active: loss > 1.0 },
+  ];
+
+  zones.forEach(z => {
+    z.el.className = z.el.className.replace(/\s*(active|inactive)/g, '');
+    z.el.classList.add((loss < 0 ? false : z.active) ? 'active' : 'inactive');
+  });
 }
 
-// Oblicz przy starcie
+// Init
 calculate();
 </script>
 
 <noscript>
-  <p style="color:#ff6b6b;text-align:center;padding:2rem;">Ten kalkulator wymaga włączonego JavaScript.</p>
+  <p style="color:#ff6b6b;text-align:center;padding:2rem;">This calculator requires JavaScript. / Ten kalkulator wymaga JavaScript.</p>
 </noscript>
 
 </body>

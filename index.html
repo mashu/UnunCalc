@@ -3,296 +3,160 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Calculate UnUn transformer insertion loss from NanoVNA S21 measurement with L-pad resistive divider. Separates mismatch and dissipative losses.">
+<meta name="description" content="Calculate UnUn transformer insertion loss from NanoVNA S21 measurement with L-pad resistive divider. Multi-frequency analysis with diagnostic charts.">
 <meta name="author" content="SA0KAM">
 <meta property="og:title" content="UnUn Loss Calculator — NanoVNA + L-pad">
-<meta property="og:description" content="Calculate UnUn transformer insertion loss from NanoVNA S21 measurement with L-pad resistive divider. Separates mismatch and dissipative losses.">
+<meta property="og:description" content="Calculate UnUn transformer insertion loss from NanoVNA S21/S11 measurements with L-pad resistive divider.">
 <meta property="og:url" content="https://mashu.github.io/UnunCalc/">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://mashu.github.io/UnunCalc/">
 <title>UnUn Loss Calculator — NanoVNA + L-pad</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
-
   :root {
-    --bg: #0c1017;
-    --surface: #141b24;
-    --surface2: #1c2533;
-    --surface3: #243040;
-    --border: #2a3648;
-    --text: #cdd6e0;
-    --text-dim: #6b7a8d;
-    --accent: #4ecdc4;
-    --accent-dim: #2a7a74;
-    --red: #ff6b6b;
-    --yellow: #ffe66d;
-    --blue: #5b9bd5;
-    --purple: #a78bfa;
-    --green: #6bcf7f;
-    --orange: #f0a050;
+    --bg:#0c1017;--surface:#141b24;--surface2:#1c2533;--surface3:#243040;
+    --border:#2a3648;--text:#cdd6e0;--text-dim:#6b7a8d;
+    --accent:#4ecdc4;--accent-dim:#2a7a74;--red:#ff6b6b;--yellow:#ffe66d;
+    --blue:#5b9bd5;--purple:#a78bfa;--green:#6bcf7f;--orange:#f0a050;
   }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding:1.5rem}
+  .container{max-width:740px;margin:0 auto}
+  header{margin-bottom:2rem;display:flex;justify-content:space-between;align-items:flex-start}
+  h1{font-size:1.5rem;font-weight:700;color:#fff;letter-spacing:-0.03em}
+  h1 span{color:var(--accent)}
+  .subtitle{color:var(--text-dim);font-size:0.88rem;margin-top:0.3rem}
+  .lang-toggle{display:flex;gap:0.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.3rem;flex-shrink:0;margin-top:0.2rem}
+  .lang-btn{background:transparent;border:none;color:var(--text-dim);font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:600;padding:0.3rem 0.6rem;border-radius:5px;cursor:pointer;transition:all .25s}
+  .lang-btn.active{background:var(--accent-dim);color:var(--accent)}
+  .lang-btn:hover:not(.active){color:var(--text)}
+  .diagram-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem}
+  .diagram-section h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:1rem}
+  #svg-r2-group{transition:opacity .4s}#svg-r2-group.hidden{opacity:.12}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+  .card-title{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+  .card-title .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .input-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .input-group{display:flex;flex-direction:column;gap:.35rem}
+  .input-group.full{grid-column:1/-1}
+  .input-group label{font-size:.82rem;color:var(--text-dim);font-weight:500}
+  .input-row{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2);transition:border-color .2s,opacity .3s}
+  .input-row:focus-within{border-color:var(--accent)}
+  .input-row.disabled{opacity:.3;pointer-events:none}
+  .input-row input{flex:1;background:transparent;border:none;color:#fff;font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:600;padding:.65rem .75rem;outline:none;min-width:0}
+  .input-row input::placeholder{color:var(--text-dim);font-weight:400}
+  .input-row .unit{display:flex;align-items:center;padding:0 .75rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text-dim);background:var(--surface3);border-left:1px solid var(--border);white-space:nowrap}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding:.7rem .9rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;gap:.75rem}
+  .toggle-row-text{font-size:.82rem;color:var(--text-dim);line-height:1.4}
+  .toggle-row-text strong{color:var(--text);font-weight:600}
+  .toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0}
+  .toggle-switch input{opacity:0;width:0;height:0}
+  .toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--surface3);border:1px solid var(--border);border-radius:24px;transition:all .3s}
+  .toggle-slider::before{content:'';position:absolute;height:18px;width:18px;left:2px;bottom:2px;background:var(--text-dim);border-radius:50%;transition:all .3s cubic-bezier(.34,1.4,.64,1)}
+  .toggle-switch input:checked+.toggle-slider{background:var(--accent-dim);border-color:var(--accent)}
+  .toggle-switch input:checked+.toggle-slider::before{transform:translateX(20px);background:var(--accent)}
+  .gauge-container{padding:1.5rem 0 1rem}
+  .gauge-label-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.5rem}
+  .gauge-title{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)}
+  .gauge-value{font-family:'JetBrains Mono',monospace;font-size:1.8rem;font-weight:700;transition:color .5s}
+  .gauge-value .unit-sm{font-size:.9rem;font-weight:400;color:var(--text-dim)}
+  .gauge-track{position:relative;height:14px;border-radius:7px;background:var(--surface3);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+  .gauge-fill{position:absolute;left:0;top:0;bottom:0;border-radius:7px;transition:width .6s cubic-bezier(.34,1.4,.64,1),background-color .5s;min-width:4px}
+  .gauge-glow{position:absolute;right:-2px;top:-3px;bottom:-3px;width:8px;border-radius:50%;filter:blur(4px);transition:background-color .5s;pointer-events:none}
+  .gauge-ticks{display:flex;justify-content:space-between;margin-top:.35rem;padding:0 2px}
+  .gauge-ticks span{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-dim)}
+  .gauge-zones{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}
+  .zone-tag{font-size:.72rem;padding:.2rem .6rem;border-radius:4px;font-weight:600;transition:opacity .4s,transform .4s cubic-bezier(.34,1.4,.64,1)}
+  .zone-tag.active{transform:scale(1.1);opacity:1}.zone-tag.inactive{opacity:.25;transform:scale(1)}
+  .zt-excellent{background:#122b12;color:var(--green);border:1px solid #1a3d1a}
+  .zt-good{background:#2a2a10;color:var(--yellow);border:1px solid #3d3d1a}
+  .zt-poor{background:#2a1515;color:var(--red);border:1px solid #3d1a1a}
+  .loss-breakdown{margin-top:1.2rem}
+  .loss-breakdown-title{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:.6rem}
+  .loss-bar-container{display:flex;height:28px;border-radius:6px;overflow:hidden;background:var(--surface3);margin-bottom:.5rem}
+  .loss-bar-segment{display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;color:var(--bg);transition:width .6s cubic-bezier(.34,1.4,.64,1);min-width:0;overflow:hidden;white-space:nowrap}
+  .loss-bar-mismatch{background:var(--orange)}.loss-bar-dissipative{background:var(--red)}
+  .loss-legend{display:flex;gap:1.2rem;flex-wrap:wrap}
+  .loss-legend-item{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--text-dim)}
+  .loss-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+  .loss-legend-val{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:.82rem}
+  .results{background:var(--surface);border:1px solid var(--accent-dim);border-radius:12px;padding:1.5rem;margin-top:1.5rem}
+  .result-row{display:flex;justify-content:space-between;align-items:baseline;padding:.6rem 0;border-bottom:1px solid var(--border)}
+  .result-row:last-child{border-bottom:none}.result-row.hidden{display:none}
+  .result-label{font-size:.88rem;color:var(--text-dim)}
+  .result-value{font-family:'JetBrains Mono',monospace;font-size:1.05rem;font-weight:700;color:#fff;transition:color .3s}
+  .result-value.accent{color:var(--accent)}.result-value.blue{color:var(--blue)}
+  .formula-display{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text-dim);line-height:1.7}
+  .formula-display .hl{color:var(--accent);font-weight:600}
+  .formula-display .hl2{color:var(--red);font-weight:600}
+  .formula-display .hl3{color:var(--yellow);font-weight:600}
+  .formula-display .hl4{color:var(--orange);font-weight:600}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* ── MULTI-FREQ TABLE ── */
+  .mf-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-top:1.5rem}
+  .mf-summary{cursor:pointer;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);list-style:none;display:flex;align-items:center;gap:.5rem;user-select:none}
+  .mf-summary::-webkit-details-marker{display:none}
+  .mf-summary::before{content:'▸';font-size:.8rem;transition:transform .2s;display:inline-block}
+  .mf-section[open] .mf-summary::before{transform:rotate(90deg)}
+  .mf-content{margin-top:1rem}
+  .mf-table{width:100%;border-collapse:collapse;margin:.8rem 0}
+  .mf-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);padding:.4rem .5rem;text-align:left;border-bottom:1px solid var(--border);font-weight:600}
+  .mf-table td{padding:.3rem .2rem;border-bottom:1px solid var(--border)}
+  .mf-table input{background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:600;padding:.35rem .5rem;width:100%;outline:none;transition:border-color .2s}
+  .mf-table input:focus{border-color:var(--accent)}
+  .mf-table .computed{color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:.82rem;padding:.35rem .5rem;white-space:nowrap}
+  .mf-table .del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;padding:.2rem .4rem;opacity:.5;transition:opacity .2s}
+  .mf-table .del-btn:hover{opacity:1}
+  .mf-add-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;padding:.45rem 1rem;cursor:pointer;transition:all .2s;margin-top:.5rem}
+  .mf-add-btn:hover{background:var(--accent-dim);border-color:var(--accent)}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-    padding: 1.5rem;
-  }
+  /* ── CHART ── */
+  .chart-container{margin:1.2rem 0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;overflow-x:auto}
+  .chart-container svg text{font-family:'JetBrains Mono',monospace}
 
-  .container { max-width: 720px; margin: 0 auto; }
+  /* ── DIAGNOSTIC QUADRANT ── */
+  .diag-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-top:1.5rem}
+  .diag-advice{margin-top:1rem;padding:.8rem 1rem;border-radius:8px;font-size:.85rem;line-height:1.55;transition:all .3s}
+  .diag-advice strong{display:block;margin-bottom:.3rem;font-size:.9rem}
+  .diag-advice ul{margin:.4rem 0 0 1.2rem;list-style:disc}
+  .diag-advice li{margin-bottom:.2rem}
+  .adv-excellent{background:#0f1f0f;border:1px solid #1a3a1a;color:var(--green)}
+  .adv-mismatch{background:#1f1a0f;border:1px solid #3a2a1a;color:var(--orange)}
+  .adv-dissipative{background:#1f0f0f;border:1px solid #3a1a1a;color:var(--red)}
+  .adv-both{background:#1f0f1a;border:1px solid #3a1a2a;color:var(--purple)}
 
-  header {
-    margin-bottom: 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-
-  h1 { font-size: 1.5rem; font-weight: 700; color: #fff; letter-spacing: -0.03em; }
-  h1 span { color: var(--accent); }
-  .subtitle { color: var(--text-dim); font-size: 0.88rem; margin-top: 0.3rem; }
-
-  .lang-toggle {
-    display: flex; align-items: center; gap: 0.4rem;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 0.3rem; flex-shrink: 0; margin-top: 0.2rem;
-  }
-  .lang-btn {
-    background: transparent; border: none; color: var(--text-dim);
-    font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
-    padding: 0.3rem 0.6rem; border-radius: 5px; cursor: pointer; transition: all 0.25s;
-  }
-  .lang-btn.active { background: var(--accent-dim); color: var(--accent); }
-  .lang-btn:hover:not(.active) { color: var(--text); }
-
-  .diagram-section {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem;
-  }
-  .diagram-section h2 {
-    font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--text-dim); margin-bottom: 1rem;
-  }
-  #svg-r2-group { transition: opacity 0.4s ease; }
-  #svg-r2-group.hidden { opacity: 0.12; }
-
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;
-  }
-  .card-title {
-    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--text-dim); margin-bottom: 1rem;
-    display: flex; align-items: center; gap: 0.5rem;
-  }
-  .card-title .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-
-  .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .input-group { display: flex; flex-direction: column; gap: 0.35rem; }
-  .input-group.full { grid-column: 1 / -1; }
-  .input-group label { font-size: 0.82rem; color: var(--text-dim); font-weight: 500; }
-
-  .input-row {
-    display: flex; align-items: stretch; border: 1px solid var(--border);
-    border-radius: 8px; overflow: hidden; background: var(--surface2);
-    transition: border-color 0.2s, opacity 0.3s;
-  }
-  .input-row:focus-within { border-color: var(--accent); }
-  .input-row.disabled { opacity: 0.3; pointer-events: none; }
-  .input-row input {
-    flex: 1; background: transparent; border: none; color: #fff;
-    font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600;
-    padding: 0.65rem 0.75rem; outline: none; min-width: 0;
-  }
-  .input-row input::placeholder { color: var(--text-dim); font-weight: 400; }
-  .input-row .unit {
-    display: flex; align-items: center; padding: 0 0.75rem;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
-    color: var(--text-dim); background: var(--surface3);
-    border-left: 1px solid var(--border); white-space: nowrap;
-  }
-
-  /* Toggle rows */
-  .toggle-row {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-top: 1rem; padding: 0.7rem 0.9rem;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; gap: 0.75rem;
-  }
-  .toggle-row-text { font-size: 0.82rem; color: var(--text-dim); line-height: 1.4; }
-  .toggle-row-text strong { color: var(--text); font-weight: 600; }
-  .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
-  .toggle-switch input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider {
-    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--surface3); border: 1px solid var(--border);
-    border-radius: 24px; transition: all 0.3s;
-  }
-  .toggle-slider::before {
-    content: ''; position: absolute; height: 18px; width: 18px;
-    left: 2px; bottom: 2px; background: var(--text-dim);
-    border-radius: 50%; transition: all 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
-  }
-  .toggle-switch input:checked + .toggle-slider {
-    background: var(--accent-dim); border-color: var(--accent);
-  }
-  .toggle-switch input:checked + .toggle-slider::before {
-    transform: translateX(20px); background: var(--accent);
-  }
-
-  /* Gauge */
-  .gauge-container { padding: 1.5rem 0 1rem; }
-  .gauge-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
-  .gauge-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
-  .gauge-value {
-    font-family: 'JetBrains Mono', monospace; font-size: 1.8rem;
-    font-weight: 700; transition: color 0.5s ease;
-  }
-  .gauge-value .unit-sm { font-size: 0.9rem; font-weight: 400; color: var(--text-dim); }
-  .gauge-track {
-    position: relative; height: 14px; border-radius: 7px;
-    background: var(--surface3); overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
-  }
-  .gauge-fill {
-    position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px;
-    transition: width 0.6s cubic-bezier(0.34, 1.4, 0.64, 1), background-color 0.5s ease;
-    min-width: 4px;
-  }
-  .gauge-glow {
-    position: absolute; right: -2px; top: -3px; bottom: -3px;
-    width: 8px; border-radius: 50%; filter: blur(4px);
-    transition: background-color 0.5s ease; pointer-events: none;
-  }
-  .gauge-ticks {
-    display: flex; justify-content: space-between; margin-top: 0.35rem; padding: 0 2px;
-  }
-  .gauge-ticks span { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
-  .gauge-zones { display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; }
-  .zone-tag {
-    font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600;
-    transition: opacity 0.4s, transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
-  }
-  .zone-tag.active { transform: scale(1.1); opacity: 1; }
-  .zone-tag.inactive { opacity: 0.25; transform: scale(1); }
-  .zt-excellent { background: #122b12; color: var(--green); border: 1px solid #1a3d1a; }
-  .zt-good { background: #2a2a10; color: var(--yellow); border: 1px solid #3d3d1a; }
-  .zt-poor { background: #2a1515; color: var(--red); border: 1px solid #3d1a1a; }
-
-  /* Loss breakdown bar */
-  .loss-breakdown { margin-top: 1.2rem; }
-  .loss-breakdown-title {
-    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--text-dim); margin-bottom: 0.6rem;
-  }
-  .loss-bar-container {
-    display: flex; height: 28px; border-radius: 6px; overflow: hidden;
-    background: var(--surface3); margin-bottom: 0.5rem;
-  }
-  .loss-bar-segment {
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 600;
-    color: var(--bg); transition: width 0.6s cubic-bezier(0.34, 1.4, 0.64, 1);
-    min-width: 0; overflow: hidden; white-space: nowrap;
-  }
-  .loss-bar-mismatch { background: var(--orange); }
-  .loss-bar-dissipative { background: var(--red); }
-
-  .loss-legend {
-    display: flex; gap: 1.2rem; flex-wrap: wrap;
-  }
-  .loss-legend-item {
-    display: flex; align-items: center; gap: 0.4rem;
-    font-size: 0.8rem; color: var(--text-dim);
-  }
-  .loss-legend-dot {
-    width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
-  }
-  .loss-legend-val {
-    font-family: 'JetBrains Mono', monospace; font-weight: 600;
-    font-size: 0.82rem;
-  }
-
-  /* Results */
-  .results {
-    background: var(--surface); border: 1px solid var(--accent-dim);
-    border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;
-  }
-  .result-row {
-    display: flex; justify-content: space-between; align-items: baseline;
-    padding: 0.6rem 0; border-bottom: 1px solid var(--border);
-  }
-  .result-row:last-child { border-bottom: none; }
-  .result-row.hidden { display: none; }
-  .result-label { font-size: 0.88rem; color: var(--text-dim); }
-  .result-value {
-    font-family: 'JetBrains Mono', monospace; font-size: 1.05rem;
-    font-weight: 700; color: #fff; transition: color 0.3s;
-  }
-  .result-value.accent { color: var(--accent); }
-  .result-value.blue { color: var(--blue); }
-
-  .formula-display {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 0.75rem 1rem; margin-top: 0.75rem;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
-    color: var(--text-dim); line-height: 1.7;
-  }
-  .formula-display .hl { color: var(--accent); font-weight: 600; }
-  .formula-display .hl2 { color: var(--red); font-weight: 600; }
-  .formula-display .hl3 { color: var(--yellow); font-weight: 600; }
-  .formula-display .hl4 { color: var(--orange); font-weight: 600; }
-
-  /* Info sections */
-  .info-section {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;
-  }
-  .info-section summary {
-    cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--accent);
-    list-style: none; display: flex; align-items: center; gap: 0.5rem; user-select: none;
-  }
-  .info-section summary::-webkit-details-marker { display: none; }
-  .info-section summary::before {
-    content: '▸'; font-size: 0.8rem; transition: transform 0.2s; display: inline-block;
-  }
-  .info-section[open] summary::before { transform: rotate(90deg); }
-  .info-content { margin-top: 1rem; font-size: 0.88rem; color: var(--text-dim); line-height: 1.65; }
-  .info-content p { margin-bottom: 0.7rem; }
-  .info-content strong { color: var(--text); font-weight: 600; }
-  .info-content code {
-    font-family: 'JetBrains Mono', monospace; background: var(--surface3);
-    padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.82rem; color: var(--accent);
-  }
-  .note {
-    background: #1a2030; border-left: 3px solid var(--blue);
-    padding: 0.75rem 1rem; margin-top: 0.8rem; border-radius: 0 8px 8px 0;
-    font-size: 0.82rem; color: var(--text-dim); line-height: 1.5;
-  }
-  .note.warn { border-left-color: var(--yellow); background: #1f1d14; }
-  .note.info-orange { border-left-color: var(--orange); background: #1f1a14; }
-
-  footer {
-    text-align: center; margin-top: 2.5rem; padding: 1rem;
-    color: var(--text-dim); font-size: 0.75rem;
-  }
-  footer a { color: var(--accent); text-decoration: none; }
-  footer a:hover { text-decoration: underline; }
-
-  @media (max-width: 500px) {
-    .input-grid { grid-template-columns: 1fr; }
-    body { padding: 1rem; }
-    header { flex-direction: column; gap: 0.8rem; }
-    .loss-legend { flex-direction: column; gap: 0.4rem; }
-  }
+  /* ── INFO SECTIONS ── */
+  .info-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-top:1.5rem}
+  .info-section summary{cursor:pointer;font-size:.88rem;font-weight:600;color:var(--accent);list-style:none;display:flex;align-items:center;gap:.5rem;user-select:none}
+  .info-section summary::-webkit-details-marker{display:none}
+  .info-section summary::before{content:'▸';font-size:.8rem;transition:transform .2s;display:inline-block}
+  .info-section[open] summary::before{transform:rotate(90deg)}
+  .info-content{margin-top:1rem;font-size:.88rem;color:var(--text-dim);line-height:1.65}
+  .info-content p{margin-bottom:.7rem}
+  .info-content strong{color:var(--text);font-weight:600}
+  .info-content code{font-family:'JetBrains Mono',monospace;background:var(--surface3);padding:.1rem .35rem;border-radius:3px;font-size:.82rem;color:var(--accent)}
+  .note{background:#1a2030;border-left:3px solid var(--blue);padding:.75rem 1rem;margin-top:.8rem;border-radius:0 8px 8px 0;font-size:.82rem;color:var(--text-dim);line-height:1.5}
+  .note.warn{border-left-color:var(--yellow);background:#1f1d14}
+  .note.info-orange{border-left-color:var(--orange);background:#1f1a14}
+  footer{text-align:center;margin-top:2.5rem;padding:1rem;color:var(--text-dim);font-size:.75rem}
+  footer a{color:var(--accent);text-decoration:none}footer a:hover{text-decoration:underline}
+  /* ── S2P IMPORT ── */
+  .import-zone{margin-bottom:1rem;border:2px dashed var(--border);border-radius:10px;padding:1rem;text-align:center;transition:all .3s;cursor:pointer;position:relative}
+  .import-zone:hover,.import-zone.dragover{border-color:var(--accent);background:rgba(78,205,196,.04)}
+  .import-zone.dragover{border-style:solid}
+  .import-zone-icon{font-size:1.4rem;margin-bottom:.3rem}
+  .import-zone-text{font-size:.82rem;color:var(--text-dim);line-height:1.4}
+  .import-zone-text strong{color:var(--accent);font-weight:600}
+  .import-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .import-zone-formats{font-size:.7rem;color:var(--text-dim);opacity:.6;margin-top:.3rem}
+  .import-status{margin-bottom:.8rem;padding:.5rem .8rem;border-radius:6px;font-size:.8rem;font-family:'JetBrains Mono',monospace;display:none}
+  .import-status.success{display:block;background:#0f1f0f;border:1px solid #1a3a1a;color:var(--green)}
+  .import-status.error{display:block;background:#1f0f0f;border:1px solid #3a1a1a;color:var(--red)}
+  @media(max-width:500px){.input-grid{grid-template-columns:1fr}body{padding:1rem}header{flex-direction:column;gap:.8rem}.loss-legend{flex-direction:column;gap:.4rem}.mf-table{font-size:.8rem}}
 </style>
 </head>
 <body>
 <div class="container">
-
   <header>
     <div>
       <h1 data-i18n="title">UnUn Loss <span>Calculator</span></h1>
@@ -304,331 +168,187 @@
     </div>
   </header>
 
-  <!-- ═══ DIAGRAM ═══ -->
+  <!-- DIAGRAM -->
   <div class="diagram-section">
     <h2 data-i18n="diagram_title">Connection diagram</h2>
-    <svg viewBox="0 0 680 180" width="100%" style="display:block;">
-      <defs>
-        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#ffe66d"/>
-        </marker>
-      </defs>
+    <svg viewBox="0 0 680 180" width="100%" style="display:block">
+      <defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ffe66d"/></marker></defs>
       <rect x="5" y="45" width="90" height="70" rx="6" fill="#1e3a5f" stroke="#5b9bd5" stroke-width="1.5"/>
-      <text x="50" y="72" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">VNA P1</text>
-      <text x="50" y="90" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="9" opacity="0.7">50 Ω</text>
+      <text x="50" y="72" text-anchor="middle" fill="#5b9bd5" font-size="11" font-weight="700">VNA P1</text>
+      <text x="50" y="90" text-anchor="middle" fill="#5b9bd5" font-size="9" opacity=".7">50 Ω</text>
       <line x1="95" y1="75" x2="160" y2="75" stroke="#5b9bd5" stroke-width="2"/>
       <rect x="160" y="40" width="110" height="80" rx="6" fill="#3a1e1e" stroke="#ff6b6b" stroke-width="1.5"/>
-      <text x="215" y="68" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">UnUn</text>
-      <text x="215" y="85" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono, monospace" font-size="9" opacity="0.7">1 : k</text>
-      <text x="215" y="108" text-anchor="middle" fill="#ff6b6b" font-family="JetBrains Mono, monospace" font-size="8" opacity="0.5" data-i18n-svg="svg_dut">← DUT</text>
+      <text x="215" y="68" text-anchor="middle" fill="#ff6b6b" font-size="11" font-weight="700">UnUn</text>
+      <text x="215" y="85" text-anchor="middle" fill="#ff6b6b" font-size="9" opacity=".7">1 : k</text>
+      <text x="215" y="108" text-anchor="middle" fill="#ff6b6b" font-size="8" opacity=".5" data-i18n-svg="svg_dut">← DUT</text>
       <line x1="270" y1="75" x2="320" y2="75" stroke="#ff6b6b" stroke-width="2"/>
       <rect x="320" y="62" width="80" height="26" rx="4" fill="none" stroke="#4ecdc4" stroke-width="1.5"/>
-      <text x="360" y="80" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600">R₁</text>
-      <text x="360" y="55" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="8" data-i18n-svg="svg_series">series</text>
+      <text x="360" y="80" text-anchor="middle" fill="#4ecdc4" font-size="10" font-weight="600">R₁</text>
+      <text x="360" y="55" text-anchor="middle" fill="#4ecdc4" font-size="8" data-i18n-svg="svg_series">series</text>
       <line x1="400" y1="75" x2="460" y2="75" stroke="#4ecdc4" stroke-width="2"/>
       <circle cx="460" cy="75" r="3" fill="#4ecdc4" id="svg-junction"/>
       <g id="svg-r2-group">
         <line x1="460" y1="78" x2="460" y2="98" stroke="#4ecdc4" stroke-width="1.5"/>
         <rect x="448" y="98" width="24" height="42" rx="4" fill="none" stroke="#4ecdc4" stroke-width="1.5"/>
-        <text x="460" y="123" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="9" font-weight="600">R₂</text>
-        <text x="485" y="125" text-anchor="start" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="8" data-i18n-svg="svg_shunt">shunt</text>
+        <text x="460" y="123" text-anchor="middle" fill="#4ecdc4" font-size="9" font-weight="600">R₂</text>
+        <text x="485" y="125" text-anchor="start" fill="#4ecdc4" font-size="8" data-i18n-svg="svg_shunt">shunt</text>
         <line x1="460" y1="140" x2="460" y2="160" stroke="#6b8e5a" stroke-width="1.5" stroke-dasharray="4,2"/>
       </g>
       <line x1="460" y1="75" x2="575" y2="75" stroke="#5b9bd5" stroke-width="2"/>
       <rect x="575" y="45" width="90" height="70" rx="6" fill="#1e3a5f" stroke="#5b9bd5" stroke-width="1.5"/>
-      <text x="620" y="72" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">VNA P2</text>
-      <text x="620" y="90" text-anchor="middle" fill="#5b9bd5" font-family="JetBrains Mono, monospace" font-size="9" opacity="0.7">50 Ω</text>
-      <text x="620" y="105" text-anchor="middle" fill="#4ecdc4" font-family="JetBrains Mono, monospace" font-size="7" opacity="0" id="svg-builtin-label" data-i18n-svg="svg_builtin">built-in 50Ω load</text>
+      <text x="620" y="72" text-anchor="middle" fill="#5b9bd5" font-size="11" font-weight="700">VNA P2</text>
+      <text x="620" y="90" text-anchor="middle" fill="#5b9bd5" font-size="9" opacity=".7">50 Ω</text>
+      <text x="620" y="105" text-anchor="middle" fill="#4ecdc4" font-size="7" opacity="0" id="svg-builtin-label" data-i18n-svg="svg_builtin">built-in 50Ω</text>
       <line x1="50" y1="115" x2="50" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
       <line x1="215" y1="120" x2="215" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
       <line x1="30" y1="160" x2="650" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
       <line x1="620" y1="115" x2="620" y2="160" stroke="#6b8e5a" stroke-width="1" stroke-dasharray="4,2"/>
-      <text x="340" y="175" text-anchor="middle" fill="#6b8e5a" font-family="JetBrains Mono, monospace" font-size="9">GND</text>
-      <line x1="130" y1="30" x2="530" y2="30" stroke="#ffe66d" stroke-width="1" marker-end="url(#arr)" opacity="0.5"/>
-      <text x="330" y="25" text-anchor="middle" fill="#ffe66d" font-family="JetBrains Mono, monospace" font-size="8" opacity="0.6" data-i18n-svg="svg_signal">S21 signal →</text>
+      <text x="340" y="175" text-anchor="middle" fill="#6b8e5a" font-size="9">GND</text>
+      <line x1="130" y1="30" x2="530" y2="30" stroke="#ffe66d" stroke-width="1" marker-end="url(#arr)" opacity=".5"/>
+      <text x="330" y="25" text-anchor="middle" fill="#ffe66d" font-size="8" opacity=".6" data-i18n-svg="svg_signal">S21 signal →</text>
     </svg>
   </div>
 
-  <!-- ═══ L-PAD ═══ -->
+  <!-- L-PAD -->
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--accent)"></span> <span data-i18n="lpad_title">L-pad divider parameters</span></div>
     <div class="input-grid">
-      <div class="input-group">
-        <label data-i18n="r1_label">R₁ (series)</label>
-        <div class="input-row">
-          <input type="number" id="r1" value="1206.9" step="0.1" oninput="calculate()">
-          <span class="unit">Ω</span>
-        </div>
-      </div>
-      <div class="input-group">
-        <label data-i18n="r2_label">R₂ (shunt)</label>
-        <div class="input-row" id="r2-input-row">
-          <input type="number" id="r2" value="50.034" step="0.001" oninput="calculate()">
-          <span class="unit">Ω</span>
-        </div>
-      </div>
+      <div class="input-group"><label data-i18n="r1_label">R₁ (series)</label><div class="input-row"><input type="number" id="r1" value="1206.9" step="0.1" oninput="recalcAll()"><span class="unit">Ω</span></div></div>
+      <div class="input-group"><label data-i18n="r2_label">R₂ (shunt)</label><div class="input-row" id="r2-input-row"><input type="number" id="r2" value="50.034" step="0.001" oninput="recalcAll()"><span class="unit">Ω</span></div></div>
     </div>
     <div class="toggle-row">
-      <div class="toggle-row-text">
-        <strong data-i18n="r2_toggle_title">External R₂ shunt resistor</strong><br>
-        <span data-i18n="r2_toggle_desc">Disable if using only VNA Port 2 built-in 50 Ω termination</span>
-      </div>
-      <label class="toggle-switch">
-        <input type="checkbox" id="r2-toggle" checked onchange="toggleR2()">
-        <span class="toggle-slider"></span>
-      </label>
+      <div class="toggle-row-text"><strong data-i18n="r2_toggle_title">External R₂ shunt resistor</strong><br><span data-i18n="r2_toggle_desc">Disable if using only VNA Port 2 built-in 50 Ω termination</span></div>
+      <label class="toggle-switch"><input type="checkbox" id="r2-toggle" checked onchange="toggleR2()"><span class="toggle-slider"></span></label>
     </div>
   </div>
 
-  <!-- ═══ UNUN ═══ -->
+  <!-- UNUN -->
   <div class="card">
     <div class="card-title"><span class="dot" style="background:var(--red)"></span> <span data-i18n="unun_title">UnUn parameters</span></div>
     <div class="input-grid">
-      <div class="input-group">
-        <label data-i18n="ratio_label">Impedance ratio (k)</label>
-        <div class="input-row">
-          <input type="number" id="ratio" value="25" step="1" oninput="calculate()">
-          <span class="unit">: 1</span>
-        </div>
-      </div>
-      <div class="input-group">
-        <label data-i18n="z0_label">Z₀ (VNA impedance)</label>
-        <div class="input-row">
-          <input type="number" id="z0" value="50" step="1" oninput="calculate()">
-          <span class="unit">Ω</span>
-        </div>
-      </div>
+      <div class="input-group"><label data-i18n="ratio_label">Impedance ratio (k)</label><div class="input-row"><input type="number" id="ratio" value="25" step="1" oninput="recalcAll()"><span class="unit">: 1</span></div></div>
+      <div class="input-group"><label data-i18n="z0_label">Z₀ (VNA impedance)</label><div class="input-row"><input type="number" id="z0" value="50" step="1" oninput="recalcAll()"><span class="unit">Ω</span></div></div>
     </div>
   </div>
 
-  <!-- ═══ VNA READINGS ═══ -->
-  <div class="card">
-    <div class="card-title"><span class="dot" style="background:var(--yellow)"></span> <span data-i18n="vna_title">NanoVNA readings</span></div>
-    <div class="input-grid">
-      <div class="input-group">
-        <label data-i18n="s21_label">S21 (LogMag, from marker)</label>
-        <div class="input-row">
-          <input type="number" id="s21measured" value="-20.5" step="0.1" oninput="calculate()">
-          <span class="unit">dB</span>
-        </div>
-      </div>
-      <div class="input-group">
-        <label data-i18n="freq_label">Frequency (informational)</label>
-        <div class="input-row">
-          <input type="number" id="freq" value="7.1" step="0.1" placeholder="e.g. 7.1">
-          <span class="unit">MHz</span>
-        </div>
-      </div>
+  <!-- ═══ MULTI-FREQUENCY TABLE (collapsible) ═══ -->
+  <details class="mf-section" id="mf-details">
+    <summary class="mf-summary"><span class="dot" style="background:var(--yellow)"></span> <span data-i18n="mf_title">Multi-frequency measurements & S2P import</span></summary>
+    <div class="mf-content">
+
+    <!-- S2P IMPORT -->
+    <div class="import-zone" id="import-zone">
+      <div class="import-zone-icon">📂</div>
+      <div class="import-zone-text" data-i18n-html="import_text"><strong>Drop .s2p file here</strong> or click to browse<br>Exported from NanoVNA Saver → File → Export as S2P</div>
+      <div class="import-zone-formats" data-i18n="import_formats">.s2p Touchstone (IEEE standard) — contains S11 + S21 at all frequencies</div>
+      <input type="file" id="import-file" accept=".s2p,.S2P,.s1p,.S1P" onchange="handleFileImport(this.files[0])">
     </div>
-    <div class="note" style="margin-top:0.8rem" data-i18n-html="vna_note">
-      💡 Measure S21 separately at each band frequency. UnUn losses increase with frequency — check at 3.5, 7, 14, 21 and 28&nbsp;MHz.
+    <div class="import-status" id="import-status"></div>
+
+    <div class="toggle-row" style="margin-top:0;margin-bottom:1rem">
+      <div class="toggle-row-text"><strong data-i18n="s11_toggle_title">S11 return loss (mismatch analysis)</strong><br><span data-i18n="s11_toggle_desc">Enable to separate mismatch from dissipative loss</span></div>
+      <label class="toggle-switch"><input type="checkbox" id="s11-toggle" onchange="toggleS11()"><span class="toggle-slider"></span></label>
     </div>
 
-    <!-- S11 toggle + input -->
-    <div class="toggle-row" style="margin-top:1rem">
-      <div class="toggle-row-text">
-        <strong data-i18n="s11_toggle_title">S11 return loss (mismatch analysis)</strong><br>
-        <span data-i18n="s11_toggle_desc">Enable to separate mismatch loss from dissipative (heat) loss</span>
-      </div>
-      <label class="toggle-switch">
-        <input type="checkbox" id="s11-toggle" onchange="toggleS11()">
-        <span class="toggle-slider"></span>
-      </label>
+    <div style="overflow-x:auto">
+    <table class="mf-table" id="mf-table">
+      <thead>
+        <tr>
+          <th data-i18n="mf_freq" style="width:70px">Freq</th>
+          <th data-i18n="mf_s21" style="width:80px">S21 dB</th>
+          <th class="s11-col" style="width:80px;display:none" data-i18n="mf_s11">S11 dB</th>
+          <th data-i18n="mf_total" style="width:75px">Total</th>
+          <th class="s11-col" style="display:none" data-i18n="mf_mismatch">Mismatch</th>
+          <th class="s11-col" style="display:none" data-i18n="mf_dissip">Heat</th>
+          <th class="s11-col" style="display:none" data-i18n="mf_swr">SWR</th>
+          <th style="width:30px"></th>
+        </tr>
+      </thead>
+      <tbody id="mf-body"></tbody>
+    </table>
+    </div>
+    <button class="mf-add-btn" onclick="addRow()" data-i18n="mf_add">+ Add measurement</button>
+
+    <!-- CHART: Loss vs Frequency -->
+    <div class="chart-container" id="freq-chart-container" style="display:none">
+      <svg id="freq-chart" viewBox="0 0 600 280" width="100%"></svg>
     </div>
 
-    <div id="s11-section" style="display:none; margin-top:1rem;">
-      <div class="input-grid">
-        <div class="input-group">
-          <label data-i18n="s11_label">S11 (LogMag, from marker)</label>
-          <div class="input-row">
-            <input type="number" id="s11measured" value="-10" step="0.1" oninput="calculate()">
-            <span class="unit">dB</span>
-          </div>
-        </div>
-        <div class="input-group">
-          <label data-i18n="s11_swr_label">SWR (calculated)</label>
-          <div class="input-row disabled" style="pointer-events:none">
-            <input type="text" id="s11-swr" value="—" readonly style="font-weight:500;color:var(--orange)">
-            <span class="unit">: 1</span>
-          </div>
-        </div>
+    <!-- DIAGNOSTIC QUADRANT (S11 only) -->
+    <div class="diag-section" id="diag-section" style="display:none;margin-top:1rem;border:none;padding:0">
+      <div class="card-title"><span class="dot" style="background:var(--purple)"></span> <span data-i18n="diag_title">Diagnostic — what to improve</span></div>
+      <div class="chart-container" style="margin-top:.5rem">
+        <svg id="diag-chart" viewBox="0 0 420 320" width="100%"></svg>
       </div>
-      <div class="note info-orange" style="margin-top:0.8rem" data-i18n-html="s11_note">
-        💡 Read S11 from <strong>the same marker frequency</strong> as S21. On NanoVNA: S11 is CH0 (TRACE 0), displayed by default. Use the same marker position — just switch between CH0 and CH1 to read both values.
-      </div>
+      <div class="diag-advice" id="diag-advice"></div>
     </div>
-  </div>
+    </div>
+  </details>
 
-  <!-- ═══ RESULTS + GAUGE ═══ -->
-  <div class="results">
-    <div class="card-title"><span class="dot" style="background:var(--green)"></span> <span data-i18n="results_title">Results</span></div>
-
-    <!-- Total loss gauge -->
+  <!-- ═══ RESULT DETAILS (first row) ═══ -->
+  <div class="results" id="detail-results" style="display:none">
+    <div class="card-title"><span class="dot" style="background:var(--green)"></span> <span data-i18n="results_title">Detailed results (first measurement)</span></div>
     <div class="gauge-container">
       <div class="gauge-label-row">
         <span class="gauge-title" data-i18n="gauge_title">Total insertion loss</span>
         <span class="gauge-value" id="gauge-val">— <span class="unit-sm">dB</span></span>
       </div>
-      <div class="gauge-track">
-        <div class="gauge-fill" id="gauge-fill" style="width:0%; background:var(--green);">
-          <div class="gauge-glow" id="gauge-glow"></div>
-        </div>
-      </div>
-      <div class="gauge-ticks">
-        <span>0</span><span>0.25</span><span>0.5</span><span>1.0</span><span>1.5</span><span>2.0</span><span>3.0+ dB</span>
-      </div>
+      <div class="gauge-track"><div class="gauge-fill" id="gauge-fill" style="width:0%;background:var(--green)"><div class="gauge-glow" id="gauge-glow"></div></div></div>
+      <div class="gauge-ticks"><span>0</span><span>0.25</span><span>0.5</span><span>1.0</span><span>1.5</span><span>2.0</span><span>3.0+ dB</span></div>
       <div class="gauge-zones">
         <span class="zone-tag zt-excellent inactive" id="zt-exc" data-i18n="zone_exc">◉ Excellent &lt; 0.5 dB</span>
         <span class="zone-tag zt-good inactive" id="zt-good" data-i18n="zone_good">◉ OK 0.5–1.0 dB</span>
         <span class="zone-tag zt-poor inactive" id="zt-poor" data-i18n="zone_poor">◉ Poor &gt; 1.0 dB</span>
       </div>
     </div>
-
-    <!-- Loss breakdown (visible when S11 enabled) -->
     <div class="loss-breakdown" id="loss-breakdown" style="display:none">
       <div class="loss-breakdown-title" data-i18n="breakdown_title">Loss breakdown</div>
-      <div class="loss-bar-container">
-        <div class="loss-bar-segment loss-bar-mismatch" id="bar-mismatch" style="width:0%"></div>
-        <div class="loss-bar-segment loss-bar-dissipative" id="bar-dissipative" style="width:0%"></div>
-      </div>
+      <div class="loss-bar-container"><div class="loss-bar-segment loss-bar-mismatch" id="bar-mismatch" style="width:0%"></div><div class="loss-bar-segment loss-bar-dissipative" id="bar-dissipative" style="width:0%"></div></div>
       <div class="loss-legend">
-        <div class="loss-legend-item">
-          <span class="loss-legend-dot" style="background:var(--orange)"></span>
-          <span data-i18n="legend_mismatch">Mismatch (reflected)</span>
-          <span class="loss-legend-val" id="legend-mismatch-val" style="color:var(--orange)">—</span>
-        </div>
-        <div class="loss-legend-item">
-          <span class="loss-legend-dot" style="background:var(--red)"></span>
-          <span data-i18n="legend_dissipative">Dissipative (heat)</span>
-          <span class="loss-legend-val" id="legend-dissipative-val" style="color:var(--red)">—</span>
-        </div>
+        <div class="loss-legend-item"><span class="loss-legend-dot" style="background:var(--orange)"></span><span data-i18n="legend_mismatch">Mismatch</span><span class="loss-legend-val" id="legend-mismatch-val" style="color:var(--orange)">—</span></div>
+        <div class="loss-legend-item"><span class="loss-legend-dot" style="background:var(--red)"></span><span data-i18n="legend_dissipative">Heat</span><span class="loss-legend-val" id="legend-dissipative-val" style="color:var(--red)">—</span></div>
       </div>
     </div>
 
-    <!-- Result rows -->
-    <div style="margin-top:0.5rem">
-      <div class="result-row">
-        <span class="result-label" data-i18n="res_zunun">UnUn output Z (k × Z₀)</span>
-        <span class="result-value blue" id="out-zunun">—</span>
-      </div>
-      <div class="result-row">
-        <span class="result-label" data-i18n="res_zin" id="lbl-zin">Divider input Z (R₁ + R₂‖Z₀)</span>
-        <span class="result-value accent" id="out-zin">—</span>
-      </div>
-      <div class="result-row">
-        <span class="result-label" data-i18n="res_zref">Reflected Z to primary side</span>
-        <span class="result-value" id="out-zreflected">—</span>
-      </div>
-      <div class="result-row">
-        <span class="result-label" data-i18n="res_divloss" id="lbl-divloss">Divider attenuation (theoretical)</span>
-        <span class="result-value" id="out-divloss" style="color:var(--yellow)">—</span>
-      </div>
-      <div class="result-row">
-        <span class="result-label" data-i18n="res_s21">Measured S21 (full path)</span>
-        <span class="result-value" id="out-s21meas">—</span>
-      </div>
-      <!-- S11 result rows -->
-      <div class="result-row hidden" id="row-s11">
-        <span class="result-label" data-i18n="res_s11">Measured S11 (return loss)</span>
-        <span class="result-value" id="out-s11" style="color:var(--orange)">—</span>
-      </div>
-      <div class="result-row hidden" id="row-mismatch">
-        <span class="result-label" data-i18n="res_mismatch">Mismatch loss (from SWR)</span>
-        <span class="result-value" id="out-mismatch" style="color:var(--orange)">—</span>
-      </div>
-      <div class="result-row hidden" id="row-dissipative">
-        <span class="result-label" data-i18n="res_dissipative">Dissipative loss (heat in core/wire)</span>
-        <span class="result-value" id="out-dissipative" style="color:var(--red)">—</span>
-      </div>
+    <div style="margin-top:.5rem">
+      <div class="result-row"><span class="result-label" data-i18n="res_zunun">UnUn output Z (k × Z₀)</span><span class="result-value blue" id="out-zunun">—</span></div>
+      <div class="result-row"><span class="result-label" data-i18n="res_zin" id="lbl-zin">Divider input Z</span><span class="result-value accent" id="out-zin">—</span></div>
+      <div class="result-row"><span class="result-label" data-i18n="res_zref">Reflected Z to primary</span><span class="result-value" id="out-zreflected">—</span></div>
+      <div class="result-row"><span class="result-label" data-i18n="res_divloss">Divider attenuation (theor.)</span><span class="result-value" id="out-divloss" style="color:var(--yellow)">—</span></div>
     </div>
-
-    <div class="formula-display" id="formula-block">
-      <span class="hl">R₂‖Z₀</span> = R₂·Z₀ / (R₂+Z₀)<br>
-      <span class="hl3">S21_div</span> = 10·log₁₀( 4·Z_s·(R₂‖Z₀)² / ((Z_s+R₁+R₂‖Z₀)²·Z₀) )<br>
-      <span class="hl2">UnUn Loss</span> = <span class="hl3">S21_div</span> − S21_measured
-    </div>
+    <div class="formula-display" id="formula-block"></div>
   </div>
 
-  <!-- ═══ INFO: S11 EXPLAINED ═══ -->
-  <details class="info-section" id="info-s11-section" style="display:none">
-    <summary>📊 <span data-i18n="info_s11_title">What is S11 and how does mismatch analysis work?</span></summary>
-    <div class="info-content" data-i18n-html="info_s11_body">
-      <p><strong>S21 measures total insertion loss</strong> — but it doesn't tell you <em>why</em> you're losing power. There are two fundamentally different loss mechanisms:</p>
-      <p><strong>Mismatch loss (reflected power)</strong> — when the transformer doesn't present a perfect 50 Ω to Port 1, some power reflects back to the source. This power isn't lost as heat — it simply bounces back. On a real transmitter, this reflected power gets re-reflected and mostly ends up radiated anyway (on coax-fed systems), so mismatch loss is often less harmful than it appears.</p>
-      <p><strong>Dissipative loss (heat)</strong> — power genuinely absorbed by the ferrite core (hysteresis + eddy currents) and winding resistance. This is the "real" loss — energy converted to heat that never reaches the antenna. This is what degrades your signal and can overheat the transformer at higher power.</p>
-      <p><strong>S11 (return loss)</strong> tells you how much power reflects back from Port 1. From S11 you can calculate the reflection coefficient Γ and the mismatch loss:</p>
-      <p><code>|Γ| = 10^(S11_dB / 20)</code><br>
-      <code>Mismatch loss = −10·log₁₀(1 − |Γ|²)</code> dB<br>
-      <code>SWR = (1 + |Γ|) / (1 − |Γ|)</code></p>
-      <p><strong>Dissipative loss = Total loss − Mismatch loss</strong></p>
-      <p>This is the number you should really care about. A transformer with 2 dB total loss but 1.5 dB of that being mismatch is actually much better than one with 2 dB total loss and only 0.2 dB mismatch — because the second one is burning 1.8 dB as heat.</p>
-      <div class="note info-orange">
-        ⚠ <strong>Important:</strong> This separation is approximate. In a real transformer, mismatch and dissipation interact — reflected waves pass through lossy material multiple times. But for practical evaluation of homebrew UnUns, this approximation is very useful.
-      </div>
-    </div>
-  </details>
-
-  <!-- ═══ INFO: HOW TO MEASURE S11 ═══ -->
-  <details class="info-section" id="info-s11-howto" style="display:none">
-    <summary>🔧 <span data-i18n="info_s11_howto_title">How to measure S11 on NanoVNA</span></summary>
-    <div class="info-content" data-i18n-html="info_s11_howto_body">
-      <p><strong>Good news: NanoVNA measures S11 and S21 simultaneously.</strong> You don't need a separate measurement — both are available from the same sweep.</p>
-      <p><strong>1.</strong> With your setup connected (P1 → UnUn → divider → P2), the VNA is already measuring both S11 and S21.</p>
-      <p><strong>2.</strong> S11 is on <code>CH0 / TRACE 0</code> — this is usually displayed by default. Make sure format is <code>LOGMAG</code>.</p>
-      <p><strong>3.</strong> S21 is on <code>CH1 / TRACE 1</code>.</p>
-      <p><strong>4.</strong> Place a marker at your frequency of interest (e.g. 7.1 MHz).</p>
-      <p><strong>5.</strong> The marker readout shows values for all active traces. Read <strong>S11 from CH0</strong> and <strong>S21 from CH1</strong> at the same marker position.</p>
-      <p><strong>6.</strong> If you only see one trace, enable both: <code>DISPLAY → TRACE → TRACE 0</code> (S11) and <code>TRACE 1</code> (S21). Both should be in LOGMAG format.</p>
-      <p><strong>What to expect:</strong></p>
-      <p>• <strong>S11 = −6 dB</strong> → SWR 3:1, mismatch loss 1.25 dB (significant reflection)<br>
-      • <strong>S11 = −10 dB</strong> → SWR 1.9:1, mismatch loss 0.46 dB (moderate)<br>
-      • <strong>S11 = −14 dB</strong> → SWR 1.5:1, mismatch loss 0.18 dB (good)<br>
-      • <strong>S11 = −20 dB</strong> → SWR 1.2:1, mismatch loss 0.04 dB (excellent)</p>
-      <div class="note">
-        💡 If S11 is worse than −6 dB (SWR > 3:1), your divider impedance may not be well matched to the UnUn output. Double-check the wiring and resistor values.
-      </div>
-    </div>
-  </details>
-
-  <!-- ═══ INFO: FREQUENCY ═══ -->
+  <!-- INFO SECTIONS -->
   <details class="info-section" open>
     <summary>📡 <span data-i18n="info_freq_title">Does frequency matter?</span></summary>
-    <div class="info-content" data-i18n-html="info_freq_body">
-      <p><strong>Yes, significantly.</strong> UnUn losses change with frequency — they typically increase toward higher bands. A single measurement is not enough. You should measure S21 at multiple frequencies (using markers) and compare losses separately for each band.</p>
-      <p><strong>Typical behavior:</strong> at 3.5 MHz losses may be 0.2 dB, at 14 MHz — 0.5 dB, and at 28 MHz — 1+ dB. This depends on core material (mix 43, 31, 61 etc.), number of turns, and construction.</p>
-      <p><strong>The resistive divider</strong> itself is broadband and essentially frequency-independent — provided you use <strong>non-inductive</strong> resistors (metal film, SMD, or composition).</p>
-      <div class="note warn">⚠ <strong>Do not use wire-wound resistors!</strong> Their parasitic inductance will corrupt measurements above ~10 MHz. Metal film or SMD resistors are fine.</div>
-    </div>
+    <div class="info-content" data-i18n-html="info_freq_body"><p><strong>Yes, significantly.</strong> UnUn losses change with frequency — they typically increase toward higher bands. Measure at multiple frequencies and compare.</p><p><strong>Typical:</strong> 0.2 dB at 3.5 MHz, 0.5 dB at 14 MHz, 1+ dB at 28 MHz. Depends on core material (mix 43, 31, 61), turns, construction.</p><p><strong>The resistive divider</strong> is broadband — provided you use <strong>non-inductive</strong> resistors.</p><div class="note warn">⚠ <strong>Do not use wire-wound resistors!</strong> Their parasitic inductance corrupts measurements above ~10 MHz.</div></div>
   </details>
-
-  <!-- ═══ INFO: CALIBRATION ═══ -->
+  <details class="info-section" id="info-s11-section" style="display:none">
+    <summary>📊 <span data-i18n="info_s11_title">S11 and mismatch analysis explained</span></summary>
+    <div class="info-content" data-i18n-html="info_s11_body"><p><strong>S21 = total loss.</strong> But <em>why</em> are you losing power? Two mechanisms:</p><p><strong>Mismatch (reflected)</strong> — power bouncing back. Not heat. On real TX + coax, most reflected power ends up radiated anyway.</p><p><strong>Dissipative (heat)</strong> — core hysteresis, eddy currents, winding resistance. This is the real enemy — it degrades signal and overheats the transformer.</p><p><code>|Γ| = 10^(S11/20)</code>, <code>Mismatch = −10·log₁₀(1−|Γ|²)</code>, <code>Dissipative = Total − Mismatch</code></p><div class="note info-orange">⚠ This separation is approximate but very useful for practical evaluation.</div></div>
+  </details>
   <details class="info-section">
     <summary>🔧 <span data-i18n="info_cal_title">How to calibrate the NanoVNA?</span></summary>
-    <div class="info-content" data-i18n-html="info_cal_body">
-      <p><strong>Full 2-port calibration (SOLT + THRU)</strong> — essential for accurate S21:</p>
-      <p><strong>1.</strong> Set frequency range: <code>STIMULUS → START 1 MHz</code>, <code>STOP 30 MHz</code></p>
-      <p><strong>2.</strong> Connect cables to both ports — the same cables you'll use for the measurement</p>
-      <p><strong>3.</strong> Calibrate at cable ends:</p>
-      <p>• Port CH0: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Port CH1: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Both ports: <code>THRU</code> (connect P1 to P2)</p>
-      <p><strong>4.</strong> Save: <code>CAL → SAVE → SAVE 0</code></p>
-      <p><strong>5. Verify:</strong> connect THRU and check that S21 reads ~0 dB. ±0.1 dB is OK.</p>
-      <div class="note">💡 Calibration is valid for a specific set of cables and frequency range. Change cables — recalibrate.</div>
-      <div class="note warn" style="margin-top:0.5rem">⚠ Calibrate <strong>without</strong> the UnUn and divider. Calibration establishes the reference plane at the cable ends.</div>
-    </div>
+    <div class="info-content" data-i18n-html="info_cal_body"><p><strong>Full 2-port calibration (SOLT + THRU):</strong></p><p><strong>1.</strong> <code>STIMULUS → START 1 MHz, STOP 30 MHz</code></p><p><strong>2.</strong> Connect the same cables you'll use</p><p><strong>3.</strong> CH0: OPEN → SHORT → LOAD (50 Ω). CH1: OPEN → SHORT → LOAD. Both: THRU</p><p><strong>4.</strong> <code>CAL → SAVE → SAVE 0</code></p><p><strong>5.</strong> Verify: THRU should show S21 ≈ 0 dB</p><div class="note warn">⚠ Calibrate <strong>without</strong> UnUn and divider.</div></div>
   </details>
-
-  <!-- ═══ INFO: PROCEDURE ═══ -->
   <details class="info-section">
     <summary>📋 <span data-i18n="info_proc_title">Step-by-step procedure</span></summary>
-    <div class="info-content" data-i18n-html="info_proc_body">
-      <p><strong>1.</strong> Calibrate NanoVNA (2-port, 1–30 MHz)</p>
-      <p><strong>2.</strong> Enable: <code>DISPLAY → TRACE → CH1</code> → <code>FORMAT → LOGMAG</code></p>
-      <p><strong>3.</strong> Connect: P1 → UnUn (50 Ω input) → UnUn output → R₁ series → junction → P2, with R₂ from junction to GND</p>
-      <p><strong>4.</strong> Set markers: <code>MARKER → SELECT</code> at 3.5, 7, 14, 21, 28 MHz</p>
-      <p><strong>5.</strong> Read S21 [dB] from each marker → enter in this calculator</p>
-      <p><strong>6.</strong> Calculator subtracts divider attenuation = pure UnUn loss</p>
-      <p><strong>7.</strong> Optionally: enable S11 analysis, read S11 from CH0 at the same marker → enter to separate mismatch from heat loss</p>
-      <div class="note">💡 <strong>Divider verification:</strong> connect the divider alone (no UnUn) P1 → R₁ → R₂ → P2. S21 should match the "Divider attenuation" value from the calculator (±0.2 dB).</div>
+    <div class="info-content" data-i18n-html="info_proc_body"><p><strong>1.</strong> Calibrate NanoVNA (2-port, 1–30 MHz)</p><p><strong>2.</strong> <code>DISPLAY → TRACE → CH1 → FORMAT → LOGMAG</code></p><p><strong>3.</strong> Connect: P1 → UnUn → R₁ → junction → P2, R₂ to GND</p><p><strong>4.</strong> Markers at 3.5, 7, 14, 21, 28 MHz</p><p><strong>5.</strong> Read S21 (CH1) and optionally S11 (CH0) from each marker</p><p><strong>6.</strong> Enter all readings in the table above</p><div class="note">💡 <strong>Verify divider:</strong> connect without UnUn. S21 should match theoretical attenuation ±0.2 dB.</div></div>
+  </details>
+
+  <details class="info-section">
+    <summary>📂 <span data-i18n="info_import_title">Importing data from NanoVNA Saver</span></summary>
+    <div class="info-content" data-i18n-html="info_import_body">
+      <p><strong>Instead of typing marker values manually,</strong> you can import a Touchstone .s2p file directly. This file contains S11 and S21 measurements at every sweep point — much faster and error-free.</p>
+      <p><strong>How to export from NanoVNA Saver:</strong></p>
+      <p><strong>1.</strong> Connect NanoVNA to computer, open <a href="https://github.com/NanoVNA-Saver/nanovna-saver" style="color:var(--accent)">NanoVNA Saver</a></p>
+      <p><strong>2.</strong> Set sweep: 1–30 MHz (or your range of interest)</p>
+      <p><strong>3.</strong> Connect your DUT (UnUn + divider), run sweep</p>
+      <p><strong>4.</strong> File → <code>Export S2P</code> → save as <code>.s2p</code></p>
+      <p><strong>5.</strong> Drag the file onto the import zone above, or click to browse</p>
+      <p><strong>What happens:</strong> the calculator automatically reads S11 + S21 at all frequencies, filters to HF amateur bands (1.8–50 MHz), enables S11 mismatch analysis if available, and populates the table. You get instant results for all bands.</p>
+      <div class="note">💡 <strong>Touchstone format</strong> (.s2p) is an IEEE standard supported by virtually all VNA software. DB, MA, and RI formats are all supported. S1P files (1-port, S11 only) can also be imported but will not contain S21 data.</div>
     </div>
   </details>
 
@@ -636,297 +356,540 @@
 </div>
 
 <script>
-// ═══════════════════════════════════════
-// i18n
-// ═══════════════════════════════════════
-const i18n = {
+// ═══ i18n (compact) ═══
+const T = {
   en: {
-    title: 'UnUn Loss <span>Calculator</span>',
-    subtitle: 'S21 measurement with L-pad divider on NanoVNA',
-    diagram_title: 'Connection diagram',
-    lpad_title: 'L-pad divider parameters',
-    r1_label: 'R₁ (series)', r2_label: 'R₂ (shunt)',
-    unun_title: 'UnUn parameters',
-    ratio_label: 'Impedance ratio (k)', z0_label: 'Z₀ (VNA impedance)',
-    vna_title: 'NanoVNA readings',
-    s21_label: 'S21 (LogMag, from marker)',
-    freq_label: 'Frequency (informational)',
-    vna_note: '💡 Measure S21 separately at each band frequency. UnUn losses increase with frequency — check at 3.5, 7, 14, 21 and 28\u00A0MHz.',
-    s11_toggle_title: 'S11 return loss (mismatch analysis)',
-    s11_toggle_desc: 'Enable to separate mismatch loss from dissipative (heat) loss',
-    s11_label: 'S11 (LogMag, from marker)',
-    s11_swr_label: 'SWR (calculated)',
-    s11_note: '💡 Read S11 from <strong>the same marker frequency</strong> as S21. On NanoVNA: S11 is CH0 (TRACE 0), displayed by default. Use the same marker position — just read both CH0 and CH1 values.',
-    results_title: 'Results',
-    gauge_title: 'Total insertion loss',
-    zone_exc: '◉ Excellent < 0.5 dB', zone_good: '◉ OK 0.5–1.0 dB', zone_poor: '◉ Poor > 1.0 dB',
-    breakdown_title: 'Loss breakdown',
-    legend_mismatch: 'Mismatch (reflected)',
-    legend_dissipative: 'Dissipative (heat)',
-    res_zunun: 'UnUn output Z (k × Z₀)',
-    res_zin: 'Divider input Z (R₁ + R₂‖Z₀)',
-    res_zin_no_r2: 'Load Z (R₁ + Z₀)',
-    res_zref: 'Reflected Z to primary side',
-    res_divloss: 'Divider attenuation (theoretical)',
-    res_divloss_no_r2: 'R₁ attenuation (theoretical)',
-    res_s21: 'Measured S21 (full path)',
-    res_s11: 'Measured S11 (return loss)',
-    res_mismatch: 'Mismatch loss (from SWR)',
-    res_dissipative: 'Dissipative loss (heat in core/wire)',
-    formula_loss: 'Total Loss',
-    formula_mismatch: 'Mismatch',
-    formula_dissipative: 'Dissipative',
-    gauge_negative: 'dB ⚠ negative',
-    svg_dut: '← DUT', svg_series: 'series', svg_shunt: 'shunt',
-    svg_signal: 'S21 signal →', svg_builtin: 'built-in 50Ω load',
-    r2_toggle_title: 'External R₂ shunt resistor',
-    r2_toggle_desc: 'Disable if using only VNA Port 2 built-in 50 Ω termination',
-    info_freq_title: 'Does frequency matter?',
-    info_freq_body: '<p><strong>Yes, significantly.</strong> UnUn losses change with frequency — they typically increase toward higher bands. A single measurement is not enough. You should measure S21 at multiple frequencies (using markers) and compare losses separately for each band.</p><p><strong>Typical behavior:</strong> at 3.5 MHz losses may be 0.2 dB, at 14 MHz — 0.5 dB, and at 28 MHz — 1+ dB. This depends on core material (mix 43, 31, 61 etc.), number of turns, and construction.</p><p><strong>The resistive divider</strong> itself is broadband and essentially frequency-independent — provided you use <strong>non-inductive</strong> resistors (metal film, SMD, or composition).</p><div class="note warn">⚠ <strong>Do not use wire-wound resistors!</strong> Their parasitic inductance will corrupt measurements above ~10 MHz. Metal film or SMD resistors are fine.</div>',
-    info_cal_title: 'How to calibrate the NanoVNA?',
-    info_cal_body: '<p><strong>Full 2-port calibration (SOLT + THRU)</strong> — essential for accurate S21:</p><p><strong>1.</strong> Set frequency range: <code>STIMULUS → START 1 MHz</code>, <code>STOP 30 MHz</code></p><p><strong>2.</strong> Connect cables to both ports — the same cables you\'ll use for the measurement</p><p><strong>3.</strong> Calibrate at cable ends:</p><p>• Port CH0: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Port CH1: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Both ports: <code>THRU</code> (connect P1 to P2)</p><p><strong>4.</strong> Save: <code>CAL → SAVE → SAVE 0</code></p><p><strong>5. Verify:</strong> connect THRU and check that S21 reads ~0 dB. ±0.1 dB is OK.</p><div class="note">💡 Calibration is valid for a specific set of cables and frequency range. Change cables — recalibrate.</div><div class="note warn" style="margin-top:0.5rem">⚠ Calibrate <strong>without</strong> the UnUn and divider. Calibration establishes the reference plane at the cable ends.</div>',
-    info_proc_title: 'Step-by-step procedure',
-    info_proc_body: '<p><strong>1.</strong> Calibrate NanoVNA (2-port, 1–30 MHz)</p><p><strong>2.</strong> Enable: <code>DISPLAY → TRACE → CH1</code> → <code>FORMAT → LOGMAG</code></p><p><strong>3.</strong> Connect: P1 → UnUn (50 Ω input) → UnUn output → R₁ series → junction → P2, with R₂ from junction to GND</p><p><strong>4.</strong> Set markers: <code>MARKER → SELECT</code> at 3.5, 7, 14, 21, 28 MHz</p><p><strong>5.</strong> Read S21 [dB] from each marker → enter in this calculator</p><p><strong>6.</strong> Calculator subtracts divider attenuation = pure UnUn loss</p><p><strong>7.</strong> Optionally: enable S11 analysis, read S11 from CH0 at the same marker → enter to separate mismatch from heat loss</p><div class="note">💡 <strong>Divider verification:</strong> connect the divider alone (no UnUn) P1 → R₁ → R₂ → P2. S21 should match the "Divider attenuation" value from the calculator (±0.2 dB).</div>',
-    info_s11_title: 'What is S11 and how does mismatch analysis work?',
-    info_s11_body: '<p><strong>S21 measures total insertion loss</strong> — but it doesn\'t tell you <em>why</em> you\'re losing power. There are two fundamentally different loss mechanisms:</p><p><strong>Mismatch loss (reflected power)</strong> — when the transformer doesn\'t present a perfect 50 Ω to Port 1, some power reflects back to the source. This power isn\'t lost as heat — it simply bounces back. On a real transmitter, this reflected power gets re-reflected and mostly ends up radiated anyway (on coax-fed systems), so mismatch loss is often less harmful than it appears.</p><p><strong>Dissipative loss (heat)</strong> — power genuinely absorbed by the ferrite core (hysteresis + eddy currents) and winding resistance. This is the "real" loss — energy converted to heat that never reaches the antenna. This is what degrades your signal and can overheat the transformer at higher power.</p><p><strong>S11 (return loss)</strong> tells you how much power reflects back from Port 1. From S11 you calculate the reflection coefficient Γ and the mismatch loss:</p><p><code>|Γ| = 10^(S11_dB / 20)</code><br><code>Mismatch loss = −10·log₁₀(1 − |Γ|²)</code> dB<br><code>SWR = (1 + |Γ|) / (1 − |Γ|)</code></p><p><strong>Dissipative loss = Total loss − Mismatch loss</strong></p><p>This is the number you should really care about. A transformer with 2 dB total loss but 1.5 dB mismatch is actually much better than one with 2 dB total but only 0.2 dB mismatch — because the second one is burning 1.8 dB as heat.</p><div class="note info-orange">⚠ <strong>Important:</strong> This separation is approximate. In a real transformer, mismatch and dissipation interact — reflected waves pass through lossy material multiple times. But for practical evaluation of homebrew UnUns, this approximation is very useful.</div>',
-    info_s11_howto_title: 'How to measure S11 on NanoVNA',
-    info_s11_howto_body: '<p><strong>Good news: NanoVNA measures S11 and S21 simultaneously.</strong> You don\'t need a separate measurement — both are available from the same sweep.</p><p><strong>1.</strong> With your setup connected (P1 → UnUn → divider → P2), the VNA is already measuring both S11 and S21.</p><p><strong>2.</strong> S11 is on <code>CH0 / TRACE 0</code> — this is usually displayed by default. Make sure format is <code>LOGMAG</code>.</p><p><strong>3.</strong> S21 is on <code>CH1 / TRACE 1</code>.</p><p><strong>4.</strong> Place a marker at your frequency of interest (e.g. 7.1 MHz).</p><p><strong>5.</strong> The marker readout shows values for all active traces. Read <strong>S11 from CH0</strong> and <strong>S21 from CH1</strong> at the same marker position.</p><p><strong>6.</strong> If you only see one trace, enable both: <code>DISPLAY → TRACE → TRACE 0</code> (S11) and <code>TRACE 1</code> (S21). Both should be in LOGMAG format.</p><p><strong>What to expect:</strong></p><p>• <strong>S11 = −6 dB</strong> → SWR 3:1, mismatch loss 1.25 dB (significant reflection)<br>• <strong>S11 = −10 dB</strong> → SWR 1.9:1, mismatch loss 0.46 dB (moderate)<br>• <strong>S11 = −14 dB</strong> → SWR 1.5:1, mismatch loss 0.18 dB (good)<br>• <strong>S11 = −20 dB</strong> → SWR 1.2:1, mismatch loss 0.04 dB (excellent)</p><div class="note">💡 If S11 is worse than −6 dB (SWR > 3:1), your divider impedance may not be well matched to the UnUn output. Double-check the wiring and resistor values.</div>',
+    title:'UnUn Loss <span>Calculator</span>',subtitle:'S21 measurement with L-pad divider on NanoVNA',
+    diagram_title:'Connection diagram',lpad_title:'L-pad divider parameters',
+    r1_label:'R₁ (series)',r2_label:'R₂ (shunt)',unun_title:'UnUn parameters',
+    ratio_label:'Impedance ratio (k)',z0_label:'Z₀ (VNA impedance)',
+    r2_toggle_title:'External R₂ shunt resistor',r2_toggle_desc:'Disable if using only VNA Port 2 built-in 50 Ω termination',
+    s11_toggle_title:'S11 return loss (mismatch analysis)',s11_toggle_desc:'Enable to separate mismatch from dissipative loss',
+    mf_title:'Multi-frequency measurements & S2P import',
+    mf_freq:'MHz',mf_s21:'S21 dB',mf_s11:'S11 dB',mf_total:'Total',mf_mismatch:'Mismatch',mf_dissip:'Heat',mf_swr:'SWR',mf_add:'+ Add measurement',
+    import_text:'<strong>Drop .s2p file here</strong> or click to browse<br>Exported from NanoVNA Saver → File → Export as S2P',
+    import_formats:'.s2p Touchstone (IEEE standard) — contains S11 + S21 at all frequencies',
+    import_ok:'✓ Imported {n} points from {file} ({fmin}–{fmax} MHz). S11 {s11status}.',
+    import_ok_s11_yes:'found — mismatch analysis enabled automatically',
+    import_ok_s11_no:'not available (S1P file) — only S21 imported',
+    import_err_parse:'✗ Could not parse file. Expected Touchstone .s2p format (from NanoVNA Saver).',
+    import_err_empty:'✗ No data points found in file.',
+    import_err_read:'✗ Could not read file.',
+    results_title:'Detailed results (first measurement)',gauge_title:'Total insertion loss',
+    zone_exc:'◉ Excellent < 0.5 dB',zone_good:'◉ OK 0.5–1.0 dB',zone_poor:'◉ Poor > 1.0 dB',
+    breakdown_title:'Loss breakdown',legend_mismatch:'Mismatch',legend_dissipative:'Heat',
+    res_zunun:'UnUn output Z (k × Z₀)',res_zin:'Divider input Z (R₁ + R₂‖Z₀)',res_zin_no_r2:'Load Z (R₁ + Z₀)',
+    res_zref:'Reflected Z to primary',res_divloss:'Divider attenuation (theor.)',
+    formula_loss:'Total Loss',formula_mismatch:'Mismatch',formula_dissipative:'Dissipative',
+    gauge_negative:'dB ⚠ negative',
+    svg_dut:'← DUT',svg_series:'series',svg_shunt:'shunt',svg_signal:'S21 signal →',svg_builtin:'built-in 50Ω',
+    diag_title:'Diagnostic — what to improve',
+    chart_total:'Total loss',chart_dissip:'Dissipative',chart_mismatch:'Mismatch',chart_freq:'Frequency (MHz)',chart_loss:'Loss (dB)',
+    adv_exc_t:'Excellent transformer!',adv_exc:'Your UnUn is performing well at this frequency. Losses are minimal.',
+    adv_mis_t:'Impedance mismatch dominant',adv_mis:'Most loss is reflected power, not heat. The core is fine but impedance matching needs work.',adv_mis_fix:'Verify winding turns ratio matches target impedance,Shorten all leads between UnUn output and divider,Check solder joints and connectors,Verify correct winding technique (bifilar/trifilar as needed)',
+    adv_dis_t:'Core/winding losses dominant',adv_dis:'Power is being absorbed as heat in the ferrite or winding. Matching is OK but the core is lossy.',adv_dis_fix:'Try a different core material (lower µ for higher freq — e.g. mix 61 instead of 43),Add more turns to increase magnetizing inductance,Use a larger core to reduce flux density,Use thicker wire to reduce I²R losses',
+    adv_both_t:'Both mismatch and core losses high',adv_both:'The transformer needs work on both impedance matching and core performance.',adv_both_fix:'Start with core: try different material or more turns,Then address mismatch: verify ratio and shorten leads,Consider a complete rebuild with appropriate core for target frequency',
+    info_freq_title:'Does frequency matter?',
+    info_freq_body:'<p><strong>Yes, significantly.</strong> UnUn losses change with frequency — they typically increase toward higher bands. Measure at multiple frequencies and compare.</p><p><strong>Typical:</strong> 0.2 dB at 3.5 MHz, 0.5 dB at 14 MHz, 1+ dB at 28 MHz. Depends on core material (mix 43, 31, 61), turns, construction.</p><p><strong>The resistive divider</strong> is broadband — provided you use <strong>non-inductive</strong> resistors.</p><div class="note warn">⚠ <strong>Do not use wire-wound resistors!</strong> Parasitic inductance corrupts measurements above ~10 MHz.</div>',
+    info_s11_title:'S11 and mismatch analysis explained',
+    info_s11_body:'<p><strong>S21 = total loss.</strong> But <em>why</em> are you losing power? Two mechanisms:</p><p><strong>Mismatch (reflected)</strong> — power bouncing back. Not heat. On real TX + coax, most reflected power ends up radiated anyway.</p><p><strong>Dissipative (heat)</strong> — core hysteresis, eddy currents, winding resistance. The real enemy.</p><p><code>|Γ| = 10^(S11/20)</code>, <code>Mismatch = −10·log₁₀(1−|Γ|²)</code>, <code>Dissipative = Total − Mismatch</code></p><div class="note info-orange">⚠ Approximate but very useful for practical evaluation.</div>',
+    info_cal_title:'How to calibrate the NanoVNA?',
+    info_cal_body:'<p><strong>Full 2-port calibration (SOLT + THRU):</strong></p><p><strong>1.</strong> <code>STIMULUS → START 1 MHz, STOP 30 MHz</code></p><p><strong>2.</strong> Same cables as measurement</p><p><strong>3.</strong> CH0: OPEN→SHORT→LOAD. CH1: OPEN→SHORT→LOAD. Both: THRU</p><p><strong>4.</strong> <code>CAL → SAVE → SAVE 0</code></p><p><strong>5.</strong> Verify: THRU → S21 ≈ 0 dB</p><div class="note warn">⚠ Calibrate <strong>without</strong> UnUn and divider.</div>',
+    info_proc_title:'Step-by-step procedure',
+    info_proc_body:'<p><strong>1.</strong> Calibrate (2-port, 1–30 MHz)</p><p><strong>2.</strong> <code>CH1 → LOGMAG</code></p><p><strong>3.</strong> Connect: P1→UnUn→R₁→R₂→P2</p><p><strong>4.</strong> Markers at 3.5, 7, 14, 21, 28 MHz</p><p><strong>5.</strong> Read S21 (CH1) + S11 (CH0)</p><p><strong>6.</strong> Enter readings above</p><div class="note">💡 Verify divider without UnUn: S21 should match theoretical ±0.2 dB.</div>',
+    info_import_title:'Importing data from NanoVNA Saver',
+    info_import_body:'<p><strong>Instead of typing marker values manually,</strong> you can import a Touchstone .s2p file directly. This file contains S11 and S21 measurements at every sweep point — much faster and error-free.</p><p><strong>How to export from NanoVNA Saver:</strong></p><p><strong>1.</strong> Connect NanoVNA to computer, open <a href="https://github.com/NanoVNA-Saver/nanovna-saver" style="color:var(--accent)">NanoVNA Saver</a></p><p><strong>2.</strong> Set sweep: 1–30 MHz</p><p><strong>3.</strong> Connect DUT (UnUn + divider), run sweep</p><p><strong>4.</strong> File → <code>Export S2P</code> → save as <code>.s2p</code></p><p><strong>5.</strong> Drag the file onto the import zone above, or click to browse</p><p><strong>What happens:</strong> S11 + S21 at all frequencies are read, filtered to HF amateur bands, S11 analysis is enabled, and the table is populated. Instant results for all bands.</p><div class="note">💡 <strong>Touchstone format</strong> (.s2p) is IEEE standard. DB, MA, and RI formats all supported. S1P files (1-port, S11 only) also importable but without S21 data.</div>',
   },
   pl: {
-    title: 'Kalkulator strat <span>UnUn</span>',
-    subtitle: 'Pomiar S21 z dzielnikiem L-pad na NanoVNA',
-    diagram_title: 'Schemat połączenia',
-    lpad_title: 'Parametry dzielnika L-pad',
-    r1_label: 'R₁ (szeregowy)', r2_label: 'R₂ (bocznikowy)',
-    unun_title: 'Parametry UnUn',
-    ratio_label: 'Przełożenie impedancyjne (k)', z0_label: 'Z₀ (impedancja VNA)',
-    vna_title: 'Odczyty z NanoVNA',
-    s21_label: 'S21 (LogMag, z markera)',
-    freq_label: 'Częstotliwość (informacyjnie)',
-    vna_note: '💡 Zmierz S21 osobno na każdej częstotliwości pasma. Straty UnUn-a rosną z częstotliwością — sprawdź na 3.5, 7, 14, 21 i 28\u00A0MHz.',
-    s11_toggle_title: 'S11 strata powrotna (analiza niedopasowania)',
-    s11_toggle_desc: 'Włącz aby rozdzielić straty niedopasowania od strat dysypatywnych (cieplnych)',
-    s11_label: 'S11 (LogMag, z markera)',
-    s11_swr_label: 'SWR (obliczone)',
-    s11_note: '💡 Odczytaj S11 z <strong>tego samego markera</strong> co S21. Na NanoVNA: S11 to CH0 (TRACE 0), domyślnie wyświetlany. Odczytaj wartości z obu kanałów przy tym samym markerze.',
-    results_title: 'Wyniki',
-    gauge_title: 'Całkowite straty wtrąceniowe',
-    zone_exc: '◉ Doskonały < 0.5 dB', zone_good: '◉ OK 0.5–1.0 dB', zone_poor: '◉ Słaby > 1.0 dB',
-    breakdown_title: 'Rozkład strat',
-    legend_mismatch: 'Niedopasowanie (odbicie)',
-    legend_dissipative: 'Dysypatywne (ciepło)',
-    res_zunun: 'Z wyjścia UnUn (k × Z₀)',
-    res_zin: 'Z wejścia dzielnika (R₁ + R₂‖Z₀)',
-    res_zin_no_r2: 'Z obciążenia (R₁ + Z₀)',
-    res_zref: 'Z odbita na stronę pierwotną',
-    res_divloss: 'Tłumienie dzielnika (teoretyczne)',
-    res_divloss_no_r2: 'Tłumienie R₁ (teoretyczne)',
-    res_s21: 'S21 zmierzone (cały tor)',
-    res_s11: 'S11 zmierzone (strata powrotna)',
-    res_mismatch: 'Straty niedopasowania (z SWR)',
-    res_dissipative: 'Straty dysypatywne (ciepło w rdzeniu/drucie)',
-    formula_loss: 'Straty całkowite',
-    formula_mismatch: 'Niedopasowanie',
-    formula_dissipative: 'Dysypatywne',
-    gauge_negative: 'dB ⚠ ujemne',
-    svg_dut: '← mierzymy', svg_series: 'szereg.', svg_shunt: 'bocznik',
-    svg_signal: 'sygnał S21 →', svg_builtin: 'wbudowane 50Ω',
-    r2_toggle_title: 'Zewnętrzny rezystor R₂ (bocznik)',
-    r2_toggle_desc: 'Wyłącz jeśli używasz tylko wbudowanego 50 Ω portu 2 VNA',
-    info_freq_title: 'Czy częstotliwość ma znaczenie?',
-    info_freq_body: '<p><strong>Tak, i to bardzo.</strong> Straty UnUn-a zmieniają się z częstotliwością — zwykle rosną w górę pasma. Dlatego nie wystarczy jeden pomiar. Powinieneś zmierzyć S21 na kilku częstotliwościach (markerami) i porównać straty osobno dla każdego pasma.</p><p><strong>Typowe zachowanie:</strong> na 3.5 MHz straty mogą być 0.2 dB, na 14 MHz — 0.5 dB, a na 28 MHz — już 1+ dB. Zależy od materiału rdzenia (mix 43, 31, 61 itd.), liczby zwojów i konstrukcji.</p><p><strong>Dzielnik rezystancyjny</strong> jest szerokopasmowy i prawie nie zmienia się z częstotliwością — pod warunkiem, że użyjesz rezystorów <strong>nieindukcyjnych</strong> (metal film, SMD, kompozytowych).</p><div class="note warn">⚠ <strong>Nie używaj rezystorów drutowych!</strong> Ich indukcyjność pasożytnicza zafałszuje pomiar powyżej ~10 MHz. Rezystory metalowarstwowe (metal film) lub SMD są OK.</div>',
-    info_cal_title: 'Jak skalibrować NanoVNA?',
-    info_cal_body: '<p><strong>Kalibracja 2-portowa (SOLT + THRU)</strong> — kluczowa dla wiarygodnego S21:</p><p><strong>1.</strong> Ustaw zakres: <code>STIMULUS → START 1 MHz</code>, <code>STOP 30 MHz</code></p><p><strong>2.</strong> Podłącz kable do obu portów — te same, które użyjesz w pomiarze</p><p><strong>3.</strong> Kalibruj na końcówkach kabli:</p><p>• Port CH0: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Port CH1: <code>OPEN</code> → <code>SHORT</code> → <code>LOAD</code> (50 Ω)<br>• Razem: <code>THRU</code> (połącz P1 z P2)</p><p><strong>4.</strong> <code>CAL → SAVE → SAVE 0</code></p><p><strong>5. Weryfikacja:</strong> podłącz THRU i sprawdź że S21 ≈ 0 dB (±0.1 dB = OK)</p><div class="note">💡 Kalibracja jest ważna dla konkretnych kabli i zakresu częstotliwości. Zmienisz kable — kalibruj od nowa.</div><div class="note warn" style="margin-top:0.5rem">⚠ Kalibruj <strong>bez</strong> UnUn-a i bez dzielnika. Kalibracja ustala punkt odniesienia na końcówkach kabli.</div>',
-    info_proc_title: 'Procedura krok po kroku',
-    info_proc_body: '<p><strong>1.</strong> Skalibruj NanoVNA (2-port, 1–30 MHz)</p><p><strong>2.</strong> Włącz: <code>DISPLAY → TRACE → CH1</code> → <code>FORMAT → LOGMAG</code></p><p><strong>3.</strong> Podłącz: P1 → UnUn (50 Ω) → wyjście UnUn → R₁ szereg. → junction → P2, R₂ od junction do GND</p><p><strong>4.</strong> Markery: <code>MARKER → SELECT</code> na 3.5, 7, 14, 21, 28 MHz</p><p><strong>5.</strong> Odczytaj S21 [dB] z każdego markera → wpisz tu</p><p><strong>6.</strong> Kalkulator odejmie tłumienie dzielnika = czyste straty UnUn-a</p><p><strong>7.</strong> Opcjonalnie: włącz analizę S11, odczytaj S11 z CH0 przy tym samym markerze → wpisz aby rozdzielić straty niedopasowania od cieplnych</p><div class="note">💡 <strong>Weryfikacja dzielnika:</strong> podłącz sam dzielnik (bez UnUn-a) P1 → R₁ → R₂ → P2. S21 powinno zgadzać się z wartością „Tłumienie dzielnika" z kalkulatora (±0.2 dB).</div>',
-    info_s11_title: 'Co to jest S11 i jak działa analiza niedopasowania?',
-    info_s11_body: '<p><strong>S21 mierzy całkowite straty wtrąceniowe</strong> — ale nie mówi <em>dlaczego</em> tracisz moc. Są dwa zasadniczo różne mechanizmy strat:</p><p><strong>Straty niedopasowania (moc odbita)</strong> — gdy transformator nie prezentuje dokładnie 50 Ω na porcie 1, część mocy odbija się z powrotem do źródła. Ta moc nie zamienia się w ciepło — po prostu wraca. W prawdziwym nadajniku moc odbita jest ponownie odbijana i w większości trafia do anteny (w systemach z coaxem), więc straty niedopasowania są często mniej szkodliwe niż wyglądają.</p><p><strong>Straty dysypatywne (ciepło)</strong> — moc faktycznie pochłaniana przez rdzeń ferrytowy (histereza + prądy wirowe) i rezystancję uzwojenia. To jest „prawdziwa" strata — energia zamieniona na ciepło, która nigdy nie dotrze do anteny. To degraduje twój sygnał i może przegrzać transformator przy wyższej mocy.</p><p><strong>S11 (strata powrotna)</strong> mówi ile mocy odbija się z portu 1. Z S11 obliczasz współczynnik odbicia Γ i stratę niedopasowania:</p><p><code>|Γ| = 10^(S11_dB / 20)</code><br><code>Strata niedopasowania = −10·log₁₀(1 − |Γ|²)</code> dB<br><code>SWR = (1 + |Γ|) / (1 − |Γ|)</code></p><p><strong>Straty dysypatywne = Straty całkowite − Straty niedopasowania</strong></p><p>To jest liczba, która naprawdę ma znaczenie. Transformator z 2 dB strat całkowitych ale 1.5 dB z niedopasowania jest znacznie lepszy niż taki z 2 dB ale tylko 0.2 dB niedopasowania — bo ten drugi spala 1.8 dB jako ciepło.</p><div class="note info-orange">⚠ <strong>Uwaga:</strong> Ten podział jest przybliżony. W prawdziwym transformatorze niedopasowanie i dysypacja oddziałują na siebie — fale odbite przechodzą przez stratny materiał wielokrotnie. Ale do praktycznej oceny domowych UnUn-ów to przybliżenie jest bardzo użyteczne.</div>',
-    info_s11_howto_title: 'Jak zmierzyć S11 na NanoVNA',
-    info_s11_howto_body: '<p><strong>Dobra wiadomość: NanoVNA mierzy S11 i S21 jednocześnie.</strong> Nie potrzebujesz osobnego pomiaru — oba są dostępne z tego samego sweepa.</p><p><strong>1.</strong> Z podłączonym układem (P1 → UnUn → dzielnik → P2), VNA już mierzy zarówno S11 jak i S21.</p><p><strong>2.</strong> S11 jest na <code>CH0 / TRACE 0</code> — domyślnie wyświetlany. Upewnij się że format to <code>LOGMAG</code>.</p><p><strong>3.</strong> S21 jest na <code>CH1 / TRACE 1</code>.</p><p><strong>4.</strong> Ustaw marker na częstotliwości (np. 7.1 MHz).</p><p><strong>5.</strong> Odczyt markera pokazuje wartości dla wszystkich aktywnych trace\'ów. Odczytaj <strong>S11 z CH0</strong> i <strong>S21 z CH1</strong> przy tej samej pozycji markera.</p><p><strong>6.</strong> Jeśli widzisz tylko jeden trace, włącz oba: <code>DISPLAY → TRACE → TRACE 0</code> (S11) i <code>TRACE 1</code> (S21). Oba w formacie LOGMAG.</p><p><strong>Czego się spodziewać:</strong></p><p>• <strong>S11 = −6 dB</strong> → SWR 3:1, straty niedopasowania 1.25 dB (znaczne odbicie)<br>• <strong>S11 = −10 dB</strong> → SWR 1.9:1, straty niedopasowania 0.46 dB (umiarkowane)<br>• <strong>S11 = −14 dB</strong> → SWR 1.5:1, straty niedopasowania 0.18 dB (dobre)<br>• <strong>S11 = −20 dB</strong> → SWR 1.2:1, straty niedopasowania 0.04 dB (doskonałe)</p><div class="note">💡 Jeśli S11 jest gorsze niż −6 dB (SWR > 3:1), impedancja dzielnika może nie być dobrze dopasowana do wyjścia UnUn-a. Sprawdź połączenia i wartości rezystorów.</div>',
+    title:'Kalkulator strat <span>UnUn</span>',subtitle:'Pomiar S21 z dzielnikiem L-pad na NanoVNA',
+    diagram_title:'Schemat połączenia',lpad_title:'Parametry dzielnika L-pad',
+    r1_label:'R₁ (szeregowy)',r2_label:'R₂ (bocznikowy)',unun_title:'Parametry UnUn',
+    ratio_label:'Przełożenie impedancyjne (k)',z0_label:'Z₀ (impedancja VNA)',
+    r2_toggle_title:'Zewnętrzny rezystor R₂ (bocznik)',r2_toggle_desc:'Wyłącz jeśli używasz tylko wbudowanego 50 Ω portu 2',
+    s11_toggle_title:'S11 strata powrotna (analiza niedopasowania)',s11_toggle_desc:'Włącz aby rozdzielić straty niedopasowania od cieplnych',
+    mf_title:'Pomiary wieloczęstotliwościowe i import S2P',
+    mf_freq:'MHz',mf_s21:'S21 dB',mf_s11:'S11 dB',mf_total:'Łącznie',mf_mismatch:'Niedop.',mf_dissip:'Ciepło',mf_swr:'SWR',mf_add:'+ Dodaj pomiar',
+    import_text:'<strong>Upuść plik .s2p tutaj</strong> lub kliknij aby wybrać<br>Eksport z NanoVNA Saver → File → Export as S2P',
+    import_formats:'.s2p Touchstone (standard IEEE) — zawiera S11 + S21 na wszystkich częstotliwościach',
+    import_ok:'✓ Zaimportowano {n} punktów z {file} ({fmin}–{fmax} MHz). S11 {s11status}.',
+    import_ok_s11_yes:'znaleziono — analiza niedopasowania włączona automatycznie',
+    import_ok_s11_no:'niedostępne (plik S1P) — zaimportowano tylko S21',
+    import_err_parse:'✗ Nie udało się odczytać pliku. Oczekiwano formatu Touchstone .s2p (z NanoVNA Saver).',
+    import_err_empty:'✗ Brak punktów danych w pliku.',
+    import_err_read:'✗ Nie udało się odczytać pliku.',
+    results_title:'Wyniki szczegółowe (pierwszy pomiar)',gauge_title:'Całkowite straty wtrąceniowe',
+    zone_exc:'◉ Doskonały < 0.5 dB',zone_good:'◉ OK 0.5–1.0 dB',zone_poor:'◉ Słaby > 1.0 dB',
+    breakdown_title:'Rozkład strat',legend_mismatch:'Niedopasowanie',legend_dissipative:'Ciepło',
+    res_zunun:'Z wyjścia UnUn (k × Z₀)',res_zin:'Z wejścia dzielnika (R₁ + R₂‖Z₀)',res_zin_no_r2:'Z obciążenia (R₁ + Z₀)',
+    res_zref:'Z odbita na stronę pierwotną',res_divloss:'Tłumienie dzielnika (teor.)',
+    formula_loss:'Straty całk.',formula_mismatch:'Niedopasowanie',formula_dissipative:'Dysypatywne',
+    gauge_negative:'dB ⚠ ujemne',
+    svg_dut:'← mierzymy',svg_series:'szereg.',svg_shunt:'bocznik',svg_signal:'sygnał S21 →',svg_builtin:'wbudowane 50Ω',
+    diag_title:'Diagnostyka — co poprawić',
+    chart_total:'Straty łączne',chart_dissip:'Dysypatywne',chart_mismatch:'Niedopasowanie',chart_freq:'Częstotliwość (MHz)',chart_loss:'Straty (dB)',
+    adv_exc_t:'Doskonały transformator!',adv_exc:'UnUn pracuje dobrze na tej częstotliwości. Straty minimalne.',
+    adv_mis_t:'Dominuje niedopasowanie impedancji',adv_mis:'Większość strat to moc odbita, nie ciepło. Rdzeń jest OK, ale dopasowanie wymaga poprawy.',adv_mis_fix:'Sprawdź czy przełożenie zwojów odpowiada docelowej impedancji,Skróć wszystkie wyprowadzenia,Sprawdź lutowania i złączki,Zweryfikuj technikę nawijania (bifilar/trifilar)',
+    adv_dis_t:'Dominują straty w rdzeniu/uzwojeniu',adv_dis:'Moc jest pochłaniana jako ciepło. Dopasowanie OK ale rdzeń jest stratny.',adv_dis_fix:'Spróbuj innego materiału rdzenia (niższe µ na wyższe freq — np. mix 61 zamiast 43),Dodaj więcej zwojów (większa indukcja magnesująca),Użyj większego rdzenia (mniejsza gęstość strumienia),Użyj grubszego drutu (mniejsze straty I²R)',
+    adv_both_t:'Wysokie straty niedopasowania i rdzenia',adv_both:'Transformator wymaga pracy zarówno nad dopasowaniem jak i rdzeniem.',adv_both_fix:'Zacznij od rdzenia: inny materiał lub więcej zwojów,Potem dopasowanie: sprawdź przełożenie i skróć wyprowadzenia,Rozważ przebudowę z odpowiednim rdzeniem na docelową częstotliwość',
+    info_freq_title:'Czy częstotliwość ma znaczenie?',
+    info_freq_body:'<p><strong>Tak, bardzo.</strong> Straty rosną z częstotliwością. Zmierz na kilku pasmach.</p><p><strong>Typowo:</strong> 0.2 dB na 3.5 MHz, 0.5 dB na 14 MHz, 1+ dB na 28 MHz.</p><p><strong>Dzielnik</strong> jest szerokopasmowy — o ile użyjesz rezystorów <strong>nieindukcyjnych</strong>.</p><div class="note warn">⚠ Nie używaj rezystorów drutowych!</div>',
+    info_s11_title:'S11 i analiza niedopasowania',
+    info_s11_body:'<p><strong>S21 = straty łączne.</strong> Ale <em>dlaczego</em>? Dwa mechanizmy:</p><p><strong>Niedopasowanie</strong> — moc wraca, nie grzeje. Na prawdziwym TX większość wróci do anteny.</p><p><strong>Dysypatywne</strong> — ciepło w rdzeniu i uzwojeniu. To prawdziwy wróg.</p><p><code>|Γ| = 10^(S11/20)</code>, <code>Niedop. = −10·log₁₀(1−|Γ|²)</code></p><div class="note info-orange">⚠ Przybliżenie, ale bardzo użyteczne w praktyce.</div>',
+    info_cal_title:'Jak skalibrować NanoVNA?',
+    info_cal_body:'<p><strong>Kalibracja 2-portowa (SOLT + THRU):</strong></p><p><strong>1.</strong> <code>START 1 MHz, STOP 30 MHz</code></p><p><strong>2.</strong> Te same kable co w pomiarze</p><p><strong>3.</strong> CH0: OPEN→SHORT→LOAD. CH1: OPEN→SHORT→LOAD. THRU</p><p><strong>4.</strong> <code>CAL → SAVE → SAVE 0</code></p><p><strong>5.</strong> Weryfikacja: THRU → S21 ≈ 0 dB</p><div class="note warn">⚠ Kalibruj <strong>bez</strong> UnUn-a i dzielnika.</div>',
+    info_proc_title:'Procedura krok po kroku',
+    info_proc_body:'<p><strong>1.</strong> Kalibracja (2-port, 1–30 MHz)</p><p><strong>2.</strong> <code>CH1 → LOGMAG</code></p><p><strong>3.</strong> P1→UnUn→R₁→R₂→P2</p><p><strong>4.</strong> Markery: 3.5, 7, 14, 21, 28 MHz</p><p><strong>5.</strong> Odczytaj S21 (CH1) + S11 (CH0)</p><p><strong>6.</strong> Wpisz powyżej</p><div class="note">💡 Weryfikacja dzielnika bez UnUn: S21 ≈ tłumienie teor. ±0.2 dB.</div>',
+    info_import_title:'Importowanie danych z NanoVNA Saver',
+    info_import_body:'<p><strong>Zamiast wpisywać wartości z markerów ręcznie,</strong> możesz zaimportować plik Touchstone .s2p bezpośrednio. Plik zawiera S11 i S21 na każdym punkcie sweepa — szybciej i bez błędów.</p><p><strong>Jak wyeksportować z NanoVNA Saver:</strong></p><p><strong>1.</strong> Podłącz NanoVNA do komputera, otwórz <a href="https://github.com/NanoVNA-Saver/nanovna-saver" style="color:var(--accent)">NanoVNA Saver</a></p><p><strong>2.</strong> Ustaw sweep: 1–30 MHz</p><p><strong>3.</strong> Podłącz DUT (UnUn + dzielnik), uruchom sweep</p><p><strong>4.</strong> File → <code>Export S2P</code> → zapisz jako <code>.s2p</code></p><p><strong>5.</strong> Przeciągnij plik na strefę importu powyżej, lub kliknij aby wybrać</p><p><strong>Co się dzieje:</strong> kalkulator odczytuje S11 + S21 na wszystkich częstotliwościach, filtruje do pasm KF amatorskich, włącza analizę S11, wypełnia tabelę. Natychmiastowe wyniki na wszystkie pasma.</p><div class="note">💡 <strong>Format Touchstone</strong> (.s2p) to standard IEEE. Obsługiwane DB, MA i RI. Pliki S1P (1-portowe, tylko S11) też można importować, ale nie będą miały S21.</div>',
   }
 };
+let lang='en', r2On=true, s11On=false;
+let measurements=[];
 
-let currentLang = 'en';
-let r2Enabled = true;
-let s11Enabled = false;
+function t(k){return T[lang][k]||k}
+function setLang(l){
+  lang=l;
+  document.getElementById('btn-en').classList.toggle('active',l==='en');
+  document.getElementById('btn-pl').classList.toggle('active',l==='pl');
+  document.documentElement.lang=l;
+  document.querySelectorAll('[data-i18n]').forEach(e=>{const k=e.getAttribute('data-i18n');if(T[l][k]!==undefined){e.tagName==='H1'?e.innerHTML=T[l][k]:e.textContent=T[l][k]}});
+  document.querySelectorAll('[data-i18n-html]').forEach(e=>{const k=e.getAttribute('data-i18n-html');if(T[l][k]!==undefined)e.innerHTML=T[l][k]});
+  document.querySelectorAll('[data-i18n-svg]').forEach(e=>{const k=e.getAttribute('data-i18n-svg');if(T[l][k]!==undefined)e.textContent=T[l][k]});
+  renderTable();recalcAll();
+}
+function toggleR2(){
+  r2On=document.getElementById('r2-toggle').checked;
+  document.getElementById('r2-input-row').classList.toggle('disabled',!r2On);
+  document.getElementById('svg-r2-group').classList.toggle('hidden',!r2On);
+  document.getElementById('svg-junction').style.opacity=r2On?'1':'.3';
+  document.getElementById('svg-builtin-label').style.opacity=r2On?'0':'1';
+  recalcAll();
+}
+function toggleS11(){
+  s11On=document.getElementById('s11-toggle').checked;
+  document.querySelectorAll('.s11-col').forEach(e=>e.style.display=s11On?'':'none');
+  document.getElementById('loss-breakdown').style.display=s11On?'block':'none';
+  document.getElementById('info-s11-section').style.display=s11On?'':'none';
+  document.getElementById('diag-section').style.display=s11On?'block':'none';
+  renderTable();recalcAll();
+}
 
-function setLang(lang) {
-  currentLang = lang;
-  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
-  document.getElementById('btn-pl').classList.toggle('active', lang === 'pl');
-  document.documentElement.lang = lang;
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (i18n[lang][key] !== undefined) {
-      el.tagName === 'H1' || key === 'title'
-        ? el.innerHTML = i18n[lang][key]
-        : el.textContent = i18n[lang][key];
+// ═══ CORE MATH ═══
+function calcDivider(){
+  const R1=parseFloat(document.getElementById('r1').value)||0;
+  const R2=parseFloat(document.getElementById('r2').value)||0;
+  const k=parseFloat(document.getElementById('ratio').value)||25;
+  const Z0=parseFloat(document.getElementById('z0').value)||50;
+  const Zunun=k*Z0, Zs=Zunun;
+  const R2par=r2On?(R2*Z0)/(R2+Z0):Z0;
+  const Zin=R1+R2par, Zref=Zin/k, Zt=Zs+R1+R2par;
+  const S21sq=(4*Zs*R2par*R2par)/(Zt*Zt*Z0);
+  const S21div=10*Math.log10(S21sq);
+  return{R1,R2,k,Z0,Zunun,R2par,Zin,Zref,S21div};
+}
+function calcPoint(d,s21,s11){
+  const total=d.S21div-s21;
+  let mismatch=0,dissipative=total;
+  if(s11On&&s11!==undefined&&s11!==null&&s11<0){
+    const g=Math.pow(10,s11/20);
+    mismatch=-10*Math.log10(1-g*g);
+    if(!isFinite(mismatch)||mismatch<0)mismatch=0;
+    dissipative=Math.max(0,total-mismatch);
+  }
+  const swr=s11!==undefined&&s11<0?(()=>{const g=Math.pow(10,s11/20);return(1+g)/(1-g)})():null;
+  return{total,mismatch,dissipative,swr};
+}
+
+// ═══ TABLE ═══
+function renderTable(){
+  const tb=document.getElementById('mf-body');
+  tb.innerHTML='';
+  measurements.forEach((m,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input type="number" value="${m.freq}" step="0.1" onchange="measurements[${i}].freq=parseFloat(this.value)||0;recalcAll()"></td>
+      <td><input type="number" value="${m.s21}" step="0.1" onchange="measurements[${i}].s21=parseFloat(this.value)||0;recalcAll()"></td>
+      <td class="s11-col" style="display:${s11On?'':'none'}"><input type="number" value="${m.s11||''}" step="0.1" placeholder="—" onchange="measurements[${i}].s11=parseFloat(this.value)||0;recalcAll()"></td>
+      <td class="computed" id="mc-total-${i}">—</td>
+      <td class="computed s11-col" style="display:${s11On?'':'none'}" id="mc-mis-${i}">—</td>
+      <td class="computed s11-col" style="display:${s11On?'':'none'}" id="mc-dis-${i}">—</td>
+      <td class="computed s11-col" style="display:${s11On?'':'none'}" id="mc-swr-${i}">—</td>
+      <td><button class="del-btn" onclick="measurements.splice(${i},1);renderTable();recalcAll()">✕</button></td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+function addRow(){measurements.push({freq:0,s21:0,s11:-10});renderTable();recalcAll()}
+
+// ═══ S2P / TOUCHSTONE IMPORT ═══
+function parseS2P(text, fileName){
+  const lines = text.split(/\r?\n/);
+  let freqUnit = 1e6; // default Hz→MHz divisor
+  let format = 'DB'; // DB = dB+angle, MA = mag+angle, RI = real+imag
+  let numPorts = fileName.toLowerCase().endsWith('.s1p') ? 1 : 2;
+  const points = [];
+
+  for(const raw of lines){
+    const line = raw.trim();
+    if(!line || line.startsWith('!')) continue; // comment
+
+    // Option line: # Hz/kHz/MHz/GHz S DB/MA/RI R 50
+    if(line.startsWith('#')){
+      const opts = line.toUpperCase().split(/\s+/);
+      for(const o of opts){
+        if(o==='HZ')  freqUnit = 1;
+        if(o==='KHZ') freqUnit = 1e3;
+        if(o==='MHZ') freqUnit = 1e6;
+        if(o==='GHZ') freqUnit = 1e9;
+        if(o==='DB')  format = 'DB';
+        if(o==='MA')  format = 'MA';
+        if(o==='RI')  format = 'RI';
+      }
+      continue;
+    }
+
+    // Data line: freq S11r S11i [S21r S21i S12r S12i S22r S22i]
+    const parts = line.split(/\s+/).map(Number);
+    if(parts.length < 3 || isNaN(parts[0])) continue;
+
+    const freqMHz = (parts[0] * freqUnit) / 1e6;
+    // Filter to HF range (0.1 - 60 MHz) to avoid importing thousands of microwave points
+    if(freqMHz < 0.1 || freqMHz > 60) continue;
+
+    let s11dB, s21dB;
+
+    if(format === 'DB'){
+      // parts: freq, S11_dB, S11_deg, [S21_dB, S21_deg, ...]
+      s11dB = parts[1];
+      s21dB = (numPorts >= 2 && parts.length >= 5) ? parts[3] : undefined;
+    } else if(format === 'MA'){
+      // parts: freq, S11_mag, S11_deg, [S21_mag, S21_deg, ...]
+      const s11mag = parts[1];
+      s11dB = s11mag > 0 ? 20 * Math.log10(s11mag) : -100;
+      if(numPorts >= 2 && parts.length >= 5){
+        const s21mag = parts[3];
+        s21dB = s21mag > 0 ? 20 * Math.log10(s21mag) : -100;
+      }
+    } else { // RI
+      // parts: freq, S11_real, S11_imag, [S21_real, S21_imag, ...]
+      const s11mag = Math.sqrt(parts[1]*parts[1] + parts[2]*parts[2]);
+      s11dB = s11mag > 0 ? 20 * Math.log10(s11mag) : -100;
+      if(numPorts >= 2 && parts.length >= 5){
+        const s21mag = Math.sqrt(parts[3]*parts[3] + parts[4]*parts[4]);
+        s21dB = s21mag > 0 ? 20 * Math.log10(s21mag) : -100;
+      }
+    }
+
+    if(s21dB !== undefined){
+      points.push({freq: Math.round(freqMHz*1000)/1000, s21: Math.round(s21dB*100)/100, s11: Math.round(s11dB*100)/100});
+    } else {
+      // S1P: only S11 available
+      points.push({freq: Math.round(freqMHz*1000)/1000, s21: 0, s11: Math.round(s11dB*100)/100});
+    }
+  }
+
+  return {points, hasS21: points.some(p => p.s21 !== 0), hasS11: true, numPorts};
+}
+
+// Reduce points to HF ham bands ± tolerance for manageable table
+function filterToHamBands(points){
+  const bands = [1.8, 3.5, 5.3, 7, 10.1, 14, 18.068, 21, 24.89, 28, 50];
+  const tolerance = 0.15; // MHz — pick closest point within band
+  const filtered = [];
+  for(const band of bands){
+    let best = null, bestDist = Infinity;
+    for(const p of points){
+      const d = Math.abs(p.freq - band);
+      if(d < band * tolerance && d < bestDist){
+        bestDist = d; best = {...p};
+      }
+    }
+    if(best) filtered.push(best);
+  }
+  // If very few band matches, fall back to evenly spaced sampling
+  if(filtered.length < 3 && points.length > 5){
+    const step = Math.max(1, Math.floor(points.length / 10));
+    for(let i=0; i<points.length; i+=step) filtered.push(points[i]);
+  }
+  return filtered.length > 0 ? filtered : points.slice(0, 15);
+}
+
+function showImportStatus(msg, ok){
+  const el = document.getElementById('import-status');
+  el.className = 'import-status ' + (ok ? 'success' : 'error');
+  el.textContent = msg;
+}
+
+function handleFileImport(file){
+  if(!file) return;
+  const statusEl = document.getElementById('import-status');
+  const reader = new FileReader();
+  reader.onerror = () => showImportStatus(t('import_err_read'), false);
+  reader.onload = function(e){
+    try {
+      const result = parseS2P(e.target.result, file.name);
+      if(!result.points || result.points.length === 0){
+        showImportStatus(t('import_err_empty'), false);
+        return;
+      }
+
+      const filtered = filterToHamBands(result.points);
+      measurements = filtered;
+
+      // Auto-enable S11 if we have 2-port data
+      if(result.numPorts >= 2 && !s11On){
+        document.getElementById('s11-toggle').checked = true;
+        toggleS11();
+      }
+
+      renderTable();
+      recalcAll();
+
+      const fmin = result.points[0].freq.toFixed(1);
+      const fmax = result.points[result.points.length-1].freq.toFixed(1);
+      const s11status = result.numPorts >= 2 ? t('import_ok_s11_yes') : t('import_ok_s11_no');
+      const msg = t('import_ok')
+        .replace('{n}', filtered.length)
+        .replace('{file}', file.name)
+        .replace('{fmin}', fmin)
+        .replace('{fmax}', fmax)
+        .replace('{s11status}', s11status);
+      showImportStatus(msg, true);
+    } catch(ex){
+      showImportStatus(t('import_err_parse'), false);
+      console.error('S2P parse error:', ex);
+    }
+  };
+  reader.readAsText(file);
+  // Reset file input so same file can be re-imported
+  document.getElementById('import-file').value = '';
+}
+
+// Drag & drop
+(function(){
+  const zone = document.getElementById('import-zone');
+  if(!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if(e.dataTransfer.files.length > 0) handleFileImport(e.dataTransfer.files[0]);
+  });
+  // Also handle body-level drop to prevent browser opening the file
+  document.body.addEventListener('dragover', e => e.preventDefault());
+  document.body.addEventListener('drop', e => e.preventDefault());
+})();
+
+// ═══ CHARTS ═══
+function drawFreqChart(div,pts){
+  const svg=document.getElementById('freq-chart');
+  const W=600,H=280,ml=55,mr=15,mt=25,mb=40;
+  const cw=W-ml-mr,ch=H-mt-mb;
+  if(pts.length<1){svg.innerHTML='';document.getElementById('freq-chart-container').style.display='none';return}
+  document.getElementById('freq-chart-container').style.display='block';
+  const freqs=pts.map(p=>p.freq).filter(f=>f>0);
+  const fMin=Math.max(0,Math.min(...freqs)-1),fMax=Math.max(...freqs)+1;
+  const lMax=Math.max(4,Math.ceil(Math.max(...pts.map(p=>Math.max(p.total,p.dissipative||0)))+0.5));
+  const fx=f=>ml+(f-fMin)/(fMax-fMin)*cw;
+  const fy=l=>mt+(1-l/lMax)*ch;
+
+  let h=``;
+  // Zone backgrounds
+  const zones=[{y1:0,y2:0.5,c:'#6bcf7f'},{y1:0.5,y2:1,c:'#ffe66d'},{y1:1,y2:lMax,c:'#ff6b6b'}];
+  zones.forEach(z=>{
+    const ya=fy(Math.min(z.y2,lMax)),yb=fy(z.y1);
+    h+=`<rect x="${ml}" y="${ya}" width="${cw}" height="${yb-ya}" fill="${z.c}" opacity=".06"/>`;
+  });
+  // Grid
+  for(let l=0;l<=lMax;l+=0.5){
+    const y=fy(l);
+    h+=`<line x1="${ml}" y1="${y}" x2="${W-mr}" y2="${y}" stroke="${l%1===0?'#2a3648':'#1e2838'}" stroke-width="1"/>`;
+    if(l%1===0)h+=`<text x="${ml-8}" y="${y+4}" text-anchor="end" fill="#6b7a8d" font-size="10">${l}</text>`;
+  }
+  // Freq axis
+  const step=fMax-fMin>20?5:fMax-fMin>8?2:1;
+  for(let f=Math.ceil(fMin/step)*step;f<=fMax;f+=step){
+    const x=fx(f);
+    h+=`<line x1="${x}" y1="${mt}" x2="${x}" y2="${H-mb}" stroke="#1e2838" stroke-width="1"/>`;
+    h+=`<text x="${x}" y="${H-mb+15}" text-anchor="middle" fill="#6b7a8d" font-size="10">${f}</text>`;
+  }
+  // Axis labels
+  h+=`<text x="${W/2}" y="${H-3}" text-anchor="middle" fill="#6b7a8d" font-size="10">${t('chart_freq')}</text>`;
+  h+=`<text x="14" y="${H/2}" text-anchor="middle" fill="#6b7a8d" font-size="10" transform="rotate(-90,14,${H/2})">${t('chart_loss')}</text>`;
+  // Zone labels
+  h+=`<text x="${W-mr-4}" y="${fy(0.25)+4}" text-anchor="end" fill="#6bcf7f" font-size="9" opacity=".5">◉</text>`;
+  h+=`<text x="${W-mr-4}" y="${fy(0.75)+4}" text-anchor="end" fill="#ffe66d" font-size="9" opacity=".5">○</text>`;
+  h+=`<text x="${W-mr-4}" y="${fy(1.5)+4}" text-anchor="end" fill="#ff6b6b" font-size="9" opacity=".5">✗</text>`;
+
+  const sorted=[...pts].filter(p=>p.freq>0).sort((a,b)=>a.freq-b.freq);
+  // Lines
+  function drawLine(data,key,color,dash){
+    if(data.length<2)return;
+    let d=data.map((p,i)=>`${i?'L':'M'}${fx(p.freq).toFixed(1)},${fy(Math.max(0,p[key])).toFixed(1)}`).join(' ');
+    h+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="2" ${dash?'stroke-dasharray="6,3"':''}/>`;
+  }
+  drawLine(sorted,'total','#ff6b6b','');
+  if(s11On){drawLine(sorted,'dissipative','#ff6b6b','1');drawLine(sorted,'mismatch','#f0a050','1');}
+  // Points
+  sorted.forEach(p=>{
+    const x=fx(p.freq),y=fy(Math.max(0,p.total));
+    h+=`<circle cx="${x}" cy="${y}" r="5" fill="#ff6b6b" stroke="#0c1017" stroke-width="2"/>`;
+    h+=`<text x="${x}" y="${y-10}" text-anchor="middle" fill="#ff6b6b" font-size="9" font-weight="600">${p.total.toFixed(1)}</text>`;
+    if(s11On&&p.dissipative!==undefined){
+      const yd=fy(Math.max(0,p.dissipative));
+      h+=`<circle cx="${x}" cy="${yd}" r="3.5" fill="none" stroke="#ff6b6b" stroke-width="1.5" stroke-dasharray="3,2"/>`;
     }
   });
-  document.querySelectorAll('[data-i18n-html]').forEach(el => {
-    const key = el.getAttribute('data-i18n-html');
-    if (i18n[lang][key] !== undefined) el.innerHTML = i18n[lang][key];
-  });
-  document.querySelectorAll('[data-i18n-svg]').forEach(el => {
-    const key = el.getAttribute('data-i18n-svg');
-    if (i18n[lang][key] !== undefined) el.textContent = i18n[lang][key];
-  });
-  updateDynamicLabels();
-  calculate();
-}
-
-function toggleR2() {
-  r2Enabled = document.getElementById('r2-toggle').checked;
-  document.getElementById('r2-input-row').classList.toggle('disabled', !r2Enabled);
-  document.getElementById('svg-r2-group').classList.toggle('hidden', !r2Enabled);
-  document.getElementById('svg-junction').style.opacity = r2Enabled ? '1' : '0.3';
-  document.getElementById('svg-builtin-label').style.opacity = r2Enabled ? '0' : '1';
-  updateDynamicLabels();
-  calculate();
-}
-
-function toggleS11() {
-  s11Enabled = document.getElementById('s11-toggle').checked;
-  document.getElementById('s11-section').style.display = s11Enabled ? 'block' : 'none';
-  document.getElementById('loss-breakdown').style.display = s11Enabled ? 'block' : 'none';
-  document.getElementById('row-s11').classList.toggle('hidden', !s11Enabled);
-  document.getElementById('row-mismatch').classList.toggle('hidden', !s11Enabled);
-  document.getElementById('row-dissipative').classList.toggle('hidden', !s11Enabled);
-  document.getElementById('info-s11-section').style.display = s11Enabled ? '' : 'none';
-  document.getElementById('info-s11-howto').style.display = s11Enabled ? '' : 'none';
-  updateDynamicLabels();
-  calculate();
-}
-
-function updateDynamicLabels() {
-  const t = i18n[currentLang];
-  document.getElementById('lbl-zin').textContent = r2Enabled ? t.res_zin : t.res_zin_no_r2;
-  // Formula
-  const fb = document.getElementById('formula-block');
-  const fl = t.formula_loss, fm = t.formula_mismatch, fd = t.formula_dissipative;
-  let html;
-  if (r2Enabled) {
-    html = '<span class="hl">R₂‖Z₀</span> = R₂·Z₀ / (R₂+Z₀)<br>' +
-      '<span class="hl3">S21_div</span> = 10·log₁₀( 4·Z_s·(R₂‖Z₀)² / ((Z_s+R₁+R₂‖Z₀)²·Z₀) )<br>' +
-      '<span class="hl2">' + fl + '</span> = <span class="hl3">S21_div</span> − S21_measured';
-  } else {
-    html = '<span class="hl3">S21_R₁</span> = 10·log₁₀( 4·Z_s·Z₀ / (Z_s+R₁+Z₀)² )<br>' +
-      '<span class="hl2">' + fl + '</span> = <span class="hl3">S21_R₁</span> − S21_measured';
+  // Legend
+  h+=`<rect x="${ml+5}" y="${mt+2}" width="10" height="3" fill="#ff6b6b"/><text x="${ml+20}" y="${mt+7}" fill="#ff6b6b" font-size="9">${t('chart_total')}</text>`;
+  if(s11On){
+    h+=`<rect x="${ml+5}" y="${mt+14}" width="10" height="3" fill="#ff6b6b" opacity=".5" stroke-dasharray="3,2"/><text x="${ml+20}" y="${mt+19}" fill="#ff6b6b" font-size="9" opacity=".7">${t('chart_dissip')}</text>`;
+    h+=`<rect x="${ml+105}" y="${mt+14}" width="10" height="3" fill="#f0a050" opacity=".5"/><text x="${ml+120}" y="${mt+19}" fill="#f0a050" font-size="9" opacity=".7">${t('chart_mismatch')}</text>`;
   }
-  if (s11Enabled) {
-    html += '<br><br><span class="hl4">' + fm + '</span> = −10·log₁₀(1 − |Γ|²)  where |Γ| = 10^(S11/20)<br>' +
-      '<span class="hl2">' + fd + '</span> = ' + fl + ' − <span class="hl4">' + fm + '</span>';
-  }
-  fb.innerHTML = html;
+  svg.innerHTML=h;
 }
 
-// ═══════════════════════════════════════
-// CALCULATION
-// ═══════════════════════════════════════
-function getGaugeColor(loss) {
-  if (loss < 0) return '#a78bfa';
-  if (loss <= 0.5) return '#6bcf7f';
-  if (loss <= 1.0) { const t=(loss-0.5)/0.5; return `rgb(${Math.round(107+(255-107)*t)},${Math.round(207+(230-207)*t)},${Math.round(127+(109-127)*t)})`; }
-  if (loss <= 2.0) { const t=(loss-1.0)/1.0; return `rgb(255,${Math.round(230+(107-230)*t)},${Math.round(109+(107-109)*t)})`; }
-  return '#ff6b6b';
+function drawDiagChart(pts){
+  const svg=document.getElementById('diag-chart');
+  if(!s11On||pts.length<1){svg.innerHTML='';return}
+  const W=420,H=320,ml=50,mr=20,mt=25,mb=40;
+  const cw=W-ml-mr,ch=H-mt-mb;
+  const maxM=Math.max(2,Math.ceil(Math.max(...pts.map(p=>p.mismatch||0))+0.3));
+  const maxD=Math.max(2,Math.ceil(Math.max(...pts.map(p=>p.dissipative||0))+0.3));
+  const fx=m=>ml+(m/maxM)*cw, fy=d=>mt+(1-d/maxD)*ch;
+  const thM=0.5,thD=0.5; // thresholds
+  let h=``;
+  // Quadrant fills
+  h+=`<rect x="${ml}" y="${fy(thD)}" width="${fx(thM)-ml}" height="${fy(0)-fy(thD)}" fill="#6bcf7f" opacity=".06"/>`;
+  h+=`<rect x="${fx(thM)}" y="${fy(thD)}" width="${fx(maxM)-fx(thM)}" height="${fy(0)-fy(thD)}" fill="#f0a050" opacity=".06"/>`;
+  h+=`<rect x="${ml}" y="${fy(maxD)}" width="${fx(thM)-ml}" height="${fy(thD)-fy(maxD)}" fill="#ff6b6b" opacity=".06"/>`;
+  h+=`<rect x="${fx(thM)}" y="${fy(maxD)}" width="${fx(maxM)-fx(thM)}" height="${fy(thD)-fy(maxD)}" fill="#a78bfa" opacity=".06"/>`;
+  // Threshold lines
+  h+=`<line x1="${fx(thM)}" y1="${mt}" x2="${fx(thM)}" y2="${H-mb}" stroke="#ffe66d" stroke-width="1" stroke-dasharray="4,3" opacity=".3"/>`;
+  h+=`<line x1="${ml}" y1="${fy(thD)}" x2="${W-mr}" y2="${fy(thD)}" stroke="#ffe66d" stroke-width="1" stroke-dasharray="4,3" opacity=".3"/>`;
+  // Grid
+  for(let v=0;v<=maxM;v+=0.5){const x=fx(v);h+=`<line x1="${x}" y1="${mt}" x2="${x}" y2="${H-mb}" stroke="#1e2838" stroke-width="1"/>`;if(v%1===0)h+=`<text x="${x}" y="${H-mb+15}" text-anchor="middle" fill="#6b7a8d" font-size="10">${v}</text>`}
+  for(let v=0;v<=maxD;v+=0.5){const y=fy(v);h+=`<line x1="${ml}" y1="${y}" x2="${W-mr}" y2="${y}" stroke="#1e2838" stroke-width="1"/>`;if(v%1===0)h+=`<text x="${ml-8}" y="${y+4}" text-anchor="end" fill="#6b7a8d" font-size="10">${v}</text>`}
+  // Labels
+  h+=`<text x="${W/2}" y="${H-3}" text-anchor="middle" fill="#f0a050" font-size="10">${t('chart_mismatch')} (dB) →</text>`;
+  h+=`<text x="12" y="${H/2}" text-anchor="middle" fill="#ff6b6b" font-size="10" transform="rotate(-90,12,${H/2})">← ${t('chart_dissip')} (dB)</text>`;
+  // Quadrant labels
+  h+=`<text x="${(ml+fx(thM))/2}" y="${(fy(0)+fy(thD))/2+4}" text-anchor="middle" fill="#6bcf7f" font-size="10" font-weight="600" opacity=".4">✓ SWEET SPOT</text>`;
+  h+=`<text x="${(fx(thM)+fx(maxM))/2}" y="${(fy(0)+fy(thD))/2+4}" text-anchor="middle" fill="#f0a050" font-size="9" opacity=".35">${t('adv_mis_t')}</text>`;
+  h+=`<text x="${(ml+fx(thM))/2}" y="${(fy(maxD)+fy(thD))/2+4}" text-anchor="middle" fill="#ff6b6b" font-size="9" opacity=".35">${t('adv_dis_t')}</text>`;
+  h+=`<text x="${(fx(thM)+fx(maxM))/2}" y="${(fy(maxD)+fy(thD))/2+4}" text-anchor="middle" fill="#a78bfa" font-size="9" opacity=".35">${t('adv_both_t')}</text>`;
+  // Arrow to sweet spot
+  h+=`<text x="${ml+8}" y="${fy(0)-4}" text-anchor="start" fill="#6bcf7f" font-size="18" opacity=".3">★</text>`;
+  // Points
+  pts.filter(p=>p.freq>0).forEach(p=>{
+    const x=fx(p.mismatch||0),y=fy(p.dissipative||0);
+    h+=`<circle cx="${x}" cy="${y}" r="6" fill="#ffe66d" stroke="#0c1017" stroke-width="2"/>`;
+    h+=`<text x="${x+9}" y="${y+4}" fill="#ffe66d" font-size="9" font-weight="600">${p.freq} MHz</text>`;
+    // Arrow toward sweet spot
+    const tx=fx(0.1),ty=fy(0.1);
+    const dx=tx-x,dy=ty-y,len=Math.sqrt(dx*dx+dy*dy);
+    if(len>30){
+      const nx=dx/len,ny=dy/len;
+      h+=`<line x1="${x+nx*12}" y1="${y+ny*12}" x2="${x+nx*28}" y2="${y+ny*28}" stroke="#6bcf7f" stroke-width="1.5" opacity=".4" marker-end="url(#arr)"/>`;
+    }
+  });
+  svg.innerHTML=h;
 }
 
-function calculate() {
-  const R1 = parseFloat(document.getElementById('r1').value) || 0;
-  const R2 = parseFloat(document.getElementById('r2').value) || 0;
-  const k  = parseFloat(document.getElementById('ratio').value) || 25;
-  const Z0 = parseFloat(document.getElementById('z0').value) || 50;
-  const S21meas = parseFloat(document.getElementById('s21measured').value) || 0;
+function getDiagAdvice(pts){
+  const el=document.getElementById('diag-advice');
+  if(!s11On||pts.length<1){el.innerHTML='';return}
+  // Use worst point
+  const worst=pts.reduce((a,b)=>((a.total||0)>(b.total||0)?a:b));
+  const m=worst.mismatch||0, d=worst.dissipative||0;
+  let cls,title,desc,fixes;
+  if(m<0.5&&d<0.5){cls='adv-excellent';title=t('adv_exc_t');desc=t('adv_exc');fixes=null}
+  else if(m>=d&&m>=0.5){cls='adv-mismatch';title=t('adv_mis_t');desc=t('adv_mis');fixes=t('adv_mis_fix').split(',')}
+  else if(d>m&&d>=0.5){cls='adv-dissipative';title=t('adv_dis_t');desc=t('adv_dis');fixes=t('adv_dis_fix').split(',')}
+  else{cls='adv-both';title=t('adv_both_t');desc=t('adv_both');fixes=t('adv_both_fix').split(',')}
+  let html=`<strong>${title}</strong>${desc}`;
+  if(fixes)html+=`<ul>${fixes.map(f=>`<li>${f.trim()}</li>`).join('')}</ul>`;
+  el.className='diag-advice '+cls;
+  el.innerHTML=html;
+}
 
-  const Zunun = k * Z0;
-  const Zs = Zunun;
-  const R2par = r2Enabled ? (R2 * Z0) / (R2 + Z0) : Z0;
-  const Zin_div = R1 + R2par;
-  const Zreflected = Zin_div / k;
-  const Ztotal = Zs + R1 + R2par;
-  const S21sq = (4 * Zs * R2par * R2par) / (Ztotal * Ztotal * Z0);
-  const S21div_dB = 10 * Math.log10(S21sq);
-  const totalLoss = S21div_dB - S21meas;
+// ═══ GAUGE + DETAIL ═══
+function getColor(l){
+  if(l<0)return'#a78bfa';if(l<=.5)return'#6bcf7f';
+  if(l<=1){const t=(l-.5)/.5;return`rgb(${107+(255-107)*t|0},${207+(230-207)*t|0},${127+(109-127)*t|0})`}
+  if(l<=2){const t=(l-1)/1;return`rgb(255,${230+(107-230)*t|0},${109+(107-109)*t|0})`}
+  return'#ff6b6b';
+}
+function updateGauge(total){
+  const c=getColor(total),pct=Math.min(Math.max(0,total)/3*100,100);
+  const f=document.getElementById('gauge-fill'),g=document.getElementById('gauge-glow');
+  f.style.width=pct+'%';f.style.backgroundColor=c;f.style.boxShadow=`0 0 16px ${c}44,0 0 4px ${c}88`;g.style.backgroundColor=c;
+  const gv=document.getElementById('gauge-val');
+  gv.innerHTML=(total<0?Math.abs(total):total).toFixed(2)+` <span class="unit-sm">${total<0?t('gauge_negative'):'dB'}</span>`;
+  gv.style.color=c;
+  [{el:'zt-exc',a:total>=0&&total<=.5},{el:'zt-good',a:total>.5&&total<=1},{el:'zt-poor',a:total>1}].forEach(z=>{
+    const e=document.getElementById(z.el);e.className=e.className.replace(/\s*(active|inactive)/g,'');e.classList.add(total<0?'inactive':z.a?'active':'inactive');
+  });
+}
 
-  // Text results
-  document.getElementById('out-zunun').textContent = Zunun.toFixed(1) + ' Ω';
-  document.getElementById('out-zin').textContent = Zin_div.toFixed(1) + ' Ω';
-  document.getElementById('out-divloss').textContent = S21div_dB.toFixed(2) + ' dB';
-  document.getElementById('out-s21meas').textContent = S21meas.toFixed(1) + ' dB';
-
-  const zrefEl = document.getElementById('out-zreflected');
-  const mismatch_pct = Math.abs(Zreflected - Z0) / Z0 * 100;
-  zrefEl.textContent = Zreflected.toFixed(1) + ' Ω';
-  if (mismatch_pct < 5) { zrefEl.style.color='var(--green)'; zrefEl.textContent+=' ✓'; }
-  else if (mismatch_pct < 15) { zrefEl.style.color='var(--yellow)'; zrefEl.textContent+=' ~'; }
-  else { zrefEl.style.color='var(--red)'; zrefEl.textContent+=' ✗'; }
-
-  // S11 / mismatch
-  let mismatchLoss = 0, dissipativeLoss = totalLoss;
-  if (s11Enabled) {
-    const S11meas = parseFloat(document.getElementById('s11measured').value) || 0;
-    const gammaLin = Math.pow(10, S11meas / 20);
-    const gammaSq = gammaLin * gammaLin;
-    const swr = (1 + gammaLin) / (1 - gammaLin);
-
-    mismatchLoss = -10 * Math.log10(1 - gammaSq);
-    if (!isFinite(mismatchLoss) || mismatchLoss < 0) mismatchLoss = 0;
-    dissipativeLoss = Math.max(0, totalLoss - mismatchLoss);
-
-    document.getElementById('s11-swr').value = isFinite(swr) && swr > 0 ? swr.toFixed(2) : '∞';
-    document.getElementById('out-s11').textContent = S11meas.toFixed(1) + ' dB';
-    document.getElementById('out-mismatch').textContent = mismatchLoss.toFixed(2) + ' dB';
-    document.getElementById('out-dissipative').textContent = dissipativeLoss.toFixed(2) + ' dB';
-
+// ═══ MAIN RECALC ═══
+function recalcAll(){
+  const d=calcDivider();
+  // Update table computed cols
+  const pts=measurements.map((m,i)=>{
+    const p=calcPoint(d,m.s21,m.s11);
+    p.freq=m.freq;
+    const te=document.getElementById('mc-total-'+i);
+    if(te){
+      te.textContent=p.total.toFixed(2);
+      te.style.color=getColor(p.total);
+      const me=document.getElementById('mc-mis-'+i);if(me)me.textContent=s11On?p.mismatch.toFixed(2):'—';
+      const de=document.getElementById('mc-dis-'+i);if(de){de.textContent=s11On?p.dissipative.toFixed(2):'—';de.style.color=s11On?getColor(p.dissipative):'';}
+      const se=document.getElementById('mc-swr-'+i);if(se)se.textContent=s11On&&p.swr?p.swr.toFixed(1)+':1':'—';
+    }
+    return p;
+  });
+  // Charts
+  drawFreqChart(d,pts);
+  if(s11On){drawDiagChart(pts);getDiagAdvice(pts);}
+  // Detail section
+  document.getElementById('detail-results').style.display=pts.length>0?'':'none';
+  if(pts.length>0){
+    const p=pts[0];
+    updateGauge(p.total);
+    document.getElementById('out-zunun').textContent=d.Zunun.toFixed(1)+' Ω';
+    document.getElementById('out-zin').textContent=d.Zin.toFixed(1)+' Ω';
+    document.getElementById('lbl-zin').textContent=r2On?t('res_zin'):t('res_zin_no_r2');
+    document.getElementById('out-divloss').textContent=d.S21div.toFixed(2)+' dB';
+    const zr=document.getElementById('out-zreflected');
+    const mm=Math.abs(d.Zref-d.Z0)/d.Z0*100;
+    zr.textContent=d.Zref.toFixed(1)+' Ω';
+    zr.style.color=mm<5?'var(--green)':mm<15?'var(--yellow)':'var(--red)';
+    zr.textContent+=mm<5?' ✓':mm<15?' ~':' ✗';
     // Breakdown bar
-    const barTotal = Math.max(totalLoss, 0.01);
-    const mPct = Math.max((mismatchLoss / barTotal) * 100, 0);
-    const dPct = Math.max((dissipativeLoss / barTotal) * 100, 0);
-    document.getElementById('bar-mismatch').style.width = mPct + '%';
-    document.getElementById('bar-mismatch').textContent = mismatchLoss >= 0.05 ? mismatchLoss.toFixed(1) + ' dB' : '';
-    document.getElementById('bar-dissipative').style.width = dPct + '%';
-    document.getElementById('bar-dissipative').textContent = dissipativeLoss >= 0.05 ? dissipativeLoss.toFixed(1) + ' dB' : '';
-    document.getElementById('legend-mismatch-val').textContent = mismatchLoss.toFixed(2) + ' dB';
-    document.getElementById('legend-dissipative-val').textContent = dissipativeLoss.toFixed(2) + ' dB';
+    document.getElementById('loss-breakdown').style.display=s11On?'block':'none';
+    if(s11On){
+      const bt=Math.max(p.total,.01),mp=Math.max(p.mismatch/bt*100,0),dp=Math.max(p.dissipative/bt*100,0);
+      document.getElementById('bar-mismatch').style.width=mp+'%';document.getElementById('bar-mismatch').textContent=p.mismatch>=.05?p.mismatch.toFixed(1)+' dB':'';
+      document.getElementById('bar-dissipative').style.width=dp+'%';document.getElementById('bar-dissipative').textContent=p.dissipative>=.05?p.dissipative.toFixed(1)+' dB':'';
+      document.getElementById('legend-mismatch-val').textContent=p.mismatch.toFixed(2)+' dB';
+      document.getElementById('legend-dissipative-val').textContent=p.dissipative.toFixed(2)+' dB';
+    }
+    // Formula
+    const fb=document.getElementById('formula-block');
+    const fl=t('formula_loss'),fm=t('formula_mismatch'),fd=t('formula_dissipative');
+    let fh=r2On?
+      `<span class="hl">R₂‖Z₀</span> = R₂·Z₀/(R₂+Z₀)\n<span class="hl3">S21_div</span> = 10·log₁₀(4·Z_s·(R₂‖Z₀)²/((Z_s+R₁+R₂‖Z₀)²·Z₀))\n<span class="hl2">${fl}</span> = <span class="hl3">S21_div</span> − S21_meas`:
+      `<span class="hl3">S21_R₁</span> = 10·log₁₀(4·Z_s·Z₀/(Z_s+R₁+Z₀)²)\n<span class="hl2">${fl}</span> = <span class="hl3">S21_R₁</span> − S21_meas`;
+    if(s11On)fh+=`\n\n<span class="hl4">${fm}</span> = −10·log₁₀(1−|Γ|²),  |Γ|=10^(S11/20)\n<span class="hl2">${fd}</span> = ${fl} − <span class="hl4">${fm}</span>`;
+    fb.innerHTML=fh.replace(/\n/g,'<br>');
   }
-
-  // Gauge
-  const absLoss = Math.max(0, totalLoss);
-  const pct = Math.min(absLoss / 3.0 * 100, 100);
-  const color = getGaugeColor(totalLoss);
-  const fill = document.getElementById('gauge-fill');
-  const glow = document.getElementById('gauge-glow');
-  fill.style.width = pct + '%';
-  fill.style.backgroundColor = color;
-  fill.style.boxShadow = `0 0 16px ${color}44, 0 0 4px ${color}88`;
-  glow.style.backgroundColor = color;
-
-  const gaugeVal = document.getElementById('gauge-val');
-  const t = i18n[currentLang];
-  if (totalLoss < 0) {
-    gaugeVal.innerHTML = Math.abs(totalLoss).toFixed(2) + ' <span class="unit-sm">' + t.gauge_negative + '</span>';
-  } else {
-    gaugeVal.innerHTML = totalLoss.toFixed(2) + ' <span class="unit-sm">dB</span>';
-  }
-  gaugeVal.style.color = color;
-
-  const zones = [
-    { el: document.getElementById('zt-exc'),  active: totalLoss >= 0 && totalLoss <= 0.5 },
-    { el: document.getElementById('zt-good'), active: totalLoss > 0.5 && totalLoss <= 1.0 },
-    { el: document.getElementById('zt-poor'), active: totalLoss > 1.0 },
-  ];
-  zones.forEach(z => {
-    z.el.className = z.el.className.replace(/\s*(active|inactive)/g, '');
-    z.el.classList.add((totalLoss < 0 ? false : z.active) ? 'active' : 'inactive');
-  });
 }
 
-calculate();
+// Init
+renderTable();recalcAll();
 </script>
-
-<noscript>
-  <p style="color:#ff6b6b;text-align:center;padding:2rem;">This calculator requires JavaScript. / Ten kalkulator wymaga JavaScript.</p>
-</noscript>
-
+<noscript><p style="color:#ff6b6b;text-align:center;padding:2rem">JavaScript required / Wymaga JavaScript</p></noscript>
 </body>
 </html>
